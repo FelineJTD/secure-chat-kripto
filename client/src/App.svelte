@@ -1,6 +1,7 @@
 <script lang="ts">
   import ChatBubble from "./lib/ChatBubble.svelte";
   import ChatContainer from "./lib/ChatContainer.svelte";
+  import ChatHeader from "./lib/ChatHeader.svelte";
   import ChatInput from "./lib/ChatInput.svelte";
   import Container from "./lib/Container.svelte";
 </script>
@@ -8,6 +9,7 @@
 <main class="bg-neutral-100">
   <div class="flex flex-col">
     <Container>
+      <ChatHeader sender="Conan" />
       <ChatContainer>
         <ChatBubble message={`Hello, \nWorld!`} />
         <ChatBubble isSelf message="Hello, World!" />
