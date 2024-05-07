@@ -3,8 +3,8 @@ export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
     colors: {
-      primary: '#8DC3D4',
-      secondary: '#D4A48D',
+      primary: '#D7E2E3',
+      secondary: '#E3DBD7',
       neutral: {
         100: '#FDFCFB',
         200: '#F5EFE4',
