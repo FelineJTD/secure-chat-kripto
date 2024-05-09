@@ -27,7 +27,7 @@
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
       const payload = JSON.parse(event.data)
-      messages = [...messages, payload]
+      messages = [payload, ...messages]
     })
     socket.addEventListener("close", () => {
       console.log("Closed")
@@ -55,26 +55,24 @@
       sender: id,
       message
     }
-    messages = [...messages, payload]
+    messages = [payload, ...messages]
     const payloadString = JSON.stringify(payload)
     socket.send(payloadString)
   }
   
 </script>
 
-<main class="bg-neutral-100">
-  <div class="flex flex-col">
-    <Container>
-      <ChatHeader sender="Conan" isConnected={isConnected} />
-      <ChatContainer>
-        <!-- loop with index -->
-        {#each messages as message, i}
-          <ChatBubble isSelf={message.sender === id} message={message.message} />
-        {/each}
-      </ChatContainer>
-      <ChatInput onSend={onSend} />
-    </Container>
-  </div>
+<main class="bg-neutral-100 h-screen">
+  <Container>
+    <ChatHeader sender="Conan" isConnected={isConnected} />
+    <ChatContainer>
+      <!-- loop with index -->
+      {#each messages as message, i}
+        <ChatBubble isSelf={message.sender === id} message={message.message} />
+      {/each}
+    </ChatContainer>
+    <ChatInput onSend={onSend} />
+  </Container>
 </main>
 
 <style>

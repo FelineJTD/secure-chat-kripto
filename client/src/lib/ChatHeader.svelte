@@ -4,7 +4,7 @@
   export let isConnected: boolean
 </script>
 
-<div class="flex sticky top-0 px-4 md:px-8 py-2 bg-neutral-600 z-10 text-neutral-100 h-16 items-center justify-between">
+<div class="flex px-4 md:px-8 py-2 bg-neutral-600 z-10 text-neutral-100 h-16 items-center justify-between">
   <!-- name and profile picture -->
   <div class="flex h-full">
     <div class="rounded-full min-h-full aspect-square bg-neutral-400 mr-4 overflow-clip">
