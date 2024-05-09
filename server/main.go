@@ -20,9 +20,12 @@ func reader(conn *websocket.Conn) {
 			log.Println(err)
 			return
 		}
-		fmt.Println(string(p))
+		fmt.Println("Message received from client: " + string(p))
 
-		if err := conn.WriteMessage(messageType, p); err != nil {
+		// DO SOMETHING HERE
+		// this just returns the same message to client
+		toSend := []byte("You said: " + string(p))
+		if err := conn.WriteMessage(messageType, toSend); err != nil {
 			log.Println(err)
 			return
 		}
@@ -51,7 +54,8 @@ func setupRoutes() {
 }
 
 func main() {
-	fmt.Println("Hello World")
+	fmt.Println("Initiating server...")
 	setupRoutes()
+	fmt.Println("Server started at http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -7,15 +7,36 @@
   import { onMount } from "svelte";
 
   let socket: WebSocket
-  onMount(() => {
+  let isConnected = false
+
+  const connectWS = () => {
     socket = new WebSocket("ws://localhost:8080/chat")
     socket.addEventListener("open", ()=> {
       console.log("Opened")
+      isConnected = true
     })
-
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
     })
+    socket.addEventListener("close", () => {
+      console.log("Closed")
+      isConnected = false
+      // While connection is closed, try to reconnect every 3 seconds
+      setTimeout(() => {
+        connectWS()
+      }, 3000)
+    })
+    socket.addEventListener("error", (error) => {
+      console.log("Error ", error)
+    })
+  }
+
+  onMount(() => {
+    connectWS()
+
+    return () => {
+      socket.close()
+    }
   })
 
   const onSend = (message: string) => {
@@ -27,7 +48,7 @@
 <main class="bg-neutral-100">
   <div class="flex flex-col">
     <Container>
-      <ChatHeader sender="Conan" />
+      <ChatHeader sender="Conan" isConnected={isConnected} />
       <ChatContainer>
         <ChatBubble message={`Hello, \nWorld!`} />
         <ChatBubble isSelf message="Hello, World!" />
