@@ -6,6 +6,7 @@
   const sendMessage = (e: Event) => {
     const formData = new FormData(e.target as HTMLFormElement)
     const message = formData.get("message") as string
+    if (message.trim() === "") return
     onSend(message)
     input.value = ""
   }

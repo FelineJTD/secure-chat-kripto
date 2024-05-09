@@ -6,6 +6,15 @@
   import Container from "./lib/Container.svelte";
   import { onMount } from "svelte";
 
+  type Message = {
+    sender: number
+    message: string
+  }
+
+  let messages: Message[] = []
+
+  const id = Math.floor(Math.random() * 1000000)
+
   let socket: WebSocket
   let isConnected = false
 
@@ -17,6 +26,8 @@
     })
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
+      const payload = JSON.parse(event.data)
+      messages = [...messages, payload]
     })
     socket.addEventListener("close", () => {
       console.log("Closed")
@@ -40,7 +51,13 @@
   })
 
   const onSend = (message: string) => {
-    socket.send(message)
+    const payload = {
+      sender: id,
+      message
+    }
+    messages = [...messages, payload]
+    const payloadString = JSON.stringify(payload)
+    socket.send(payloadString)
   }
   
 </script>
@@ -50,13 +67,10 @@
     <Container>
       <ChatHeader sender="Conan" isConnected={isConnected} />
       <ChatContainer>
-        <ChatBubble message={`Hello, \nWorld!`} />
-        <ChatBubble isSelf message="Hello, World!" />
-        <ChatBubble message={`Hello, \nWorld!`} />
-        <ChatBubble isSelf message="Hello, World!" />
-        <ChatBubble message={`Hello, \nWorld!`} />
-        <ChatBubble isSelf message="Hello, World!" />
-        <ChatBubble isSelf message="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." />
+        <!-- loop with index -->
+        {#each messages as message, i}
+          <ChatBubble isSelf={message.sender === id} message={message.message} />
+        {/each}
       </ChatContainer>
       <ChatInput onSend={onSend} />
     </Container>
