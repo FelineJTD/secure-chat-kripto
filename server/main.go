@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
+	"github.com/FelineJTD/secure-chat-kripto/server/util"
 )
 
 type Message struct {
@@ -20,10 +22,11 @@ var upgrader = websocket.Upgrader{
 }
 
 func reader(conn *websocket.Conn) {
+	var err error = nil
+	defer util.HandleError(err)
 	for {
 		messageType, p, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
 			return
 		}
 		fmt.Println("Message received from client: " + string(p))
@@ -37,7 +40,6 @@ func reader(conn *websocket.Conn) {
 		// { sender: "server", message: msgToSend }
 		payload := []byte(`{"sender":"server","message":"` + msgToSend + `"}`)
 		if err := conn.WriteMessage(messageType, payload); err != nil {
-			log.Println(err)
 			return
 		}
 	}
@@ -48,23 +50,45 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
+	var err error = nil
+	defer util.HandleError(err)
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		return
 	}
-	log.Println("Client Connected")
+	util.Info("Client Connected")
 
-  reader(ws)
+  	reader(ws)
+}
+
+func keyEndpoint(w http.ResponseWriter, r *http.Request) {
+	var err error = nil
+	defer util.HandleError(err)
+	pubKey := r.URL.Query().Get("key")
+
+
+	util.Info("Generating Key for " + r.RemoteAddr)
+	key, err := handlers.GenerateKey(r.RemoteAddr, pubKey)
+
+	util.Info("Key Generated: " + key)
+	if err != nil {
+		return
+	}
+
+	fmt.Fprintf(w, key)
 }
 
 
 func setupRoutes() {
 	http.HandleFunc("/", homePage)
 	http.HandleFunc("/chat", wsEndpoint)
+	http.HandleFunc("/key", keyEndpoint)
 }
 
 func main() {
+	var err error = nil
+	defer util.HandleError(err)
 	fmt.Println("Initiating server...")
 	setupRoutes()
 	fmt.Println("Server started at http://localhost:8080")
