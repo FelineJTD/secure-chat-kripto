@@ -55,7 +55,6 @@
       sender: id,
       message
     }
-    messages = [payload, ...messages]
     const payloadString = JSON.stringify(payload)
     socket.send(payloadString)
   }

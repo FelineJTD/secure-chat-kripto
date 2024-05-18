@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	// "github.com/FelineJTD/secure-chat-kripto/server/middlewares"
 )
 
+var addr = flag.String("addr", ":8080", "http service address")
+
 type Message struct {
 	Sender  int    `json:"sender"`
 	Message string `json:"message"`
@@ -21,11 +24,6 @@ type Message struct {
 
 type PublicKey struct {
 	PublicKey string `json:"public_key"`
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
 }
 
 func reader(key string, conn *websocket.Conn) {
@@ -114,11 +112,13 @@ func keyEndpoint(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Public Key Sent")
 }
 
-func setupRoutes() http.Handler {
+func setupRoutes(hub *Hub) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/", homePage)
-	r.Get("/chat", wsEndpoint)
+	r.Get("/chat", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 
 	// TODO: Uncomment this to enable decryption middleware, need testing
 	// r.Route("/chat", func(r chi.Router) {
@@ -132,9 +132,30 @@ func setupRoutes() http.Handler {
 }
 
 func main() {
-	logger.Info("Initiating server...")
-	r := setupRoutes()
+	flag.Parse()
+	hub := newHub()
+	go hub.run()
+
+	r:= setupRoutes(hub)
+
+	// server := &http.Server{
+	// 	Addr:              *addr,
+	// 	ReadHeaderTimeout: 3000,
+	// }
 
 	logger.Info("Server started at http://localhost:8080")
 	logger.HandleFatal(http.ListenAndServe(":8080", r))
+	// err := server.ListenAndServe()
+	// if err != nil {
+	// 	logger.HandleError(err)
+	// }
 }
+
+
+// func main() {
+// 	logger.Info("Initiating server...")
+// 	r := setupRoutes()
+
+// 	logger.Info("Server started at http://localhost:8080")
+// 	logger.HandleFatal(http.ListenAndServe(":8080", r))
+// }
