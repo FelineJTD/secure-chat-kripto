@@ -71,6 +71,36 @@ func TestGenerateKeyAndCache(t *testing.T) {
 		log.Println(keyTwo)
 		t.Error("Keys do not match")
 	}
+}
+
+func TestEncryptDecrypt(t *testing.T) {
+	logger.SetVerbosity(3)
+
+	RemotePrivateKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+
+	if err != nil {
+		log.Println(err)
+		t.Error("Library error generating key")
+	}
+
+	RemotePublicKey, err := x509.MarshalPKIXPublicKey(RemotePrivateKey.PublicKey())
+	RemotePublicKeyEncoded := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: RemotePublicKey,
+		})
+
+	if err != nil {
+		log.Println(err)
+		t.Error("Library error marshalling key")
+	}
+
+	shared, err := GenerateKey("127.0.0.1", string(RemotePublicKeyEncoded))
+
+	if err != nil {
+		log.Println(err)
+		t.Error("Error generating key, from RemotePublicKeykey")
+	}
 
 	CachedKey, err := GetSharedKey("127.0.0.1")
 
@@ -78,8 +108,33 @@ func TestGenerateKeyAndCache(t *testing.T) {
 		t.Error("Error getting key from cache")
 	}
 
-	if CachedKey != string(keyOne) {
+	if CachedKey != string(shared) {
 		log.Println(CachedKey)
 		t.Error("Keys do not match")
+	}
+
+	// Encrypt
+	plaintext := []byte("Lorem Ipsum Dolor Sit Amet Consectetur Adipiscing Elit")
+	ciphertext, err := Encrypt(shared, plaintext)
+
+	log.Println(ciphertext)
+
+	if err != nil {
+		log.Println(err)
+		t.Error("Error encrypting")
+	}
+
+	// Decrypt
+	decrypted, err := Decrypt(shared, []byte(ciphertext))
+
+	if err != nil {
+		log.Println(err)
+		t.Error("Error decrypting")
+	}
+
+	if string(plaintext) != decrypted {
+		log.Println(string(plaintext))
+		log.Println(decrypted)
+		t.Error("Decrypted does not match plaintext")
 	}
 }

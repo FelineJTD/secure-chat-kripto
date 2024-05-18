@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+
+	"crypto/aes" // replace with GoBlockC
 
 	"github.com/gomodule/redigo/redis"
 
@@ -107,4 +110,55 @@ func GetSharedKey(address string) (string, error) {
 	}
 
 	return key, nil
+}
+
+// TODO: Replace with GoBlockC
+func Encrypt(key string, plaintext []byte) (string, error) {
+	// TODO: Hash this key instead to get some bytes if needed
+	aes, err := aes.NewCipher([]byte(key)[:32])
+
+	if err != nil {
+		return "", err
+	}
+
+    gcm, err := cipher.NewGCM(aes)
+
+    if err != nil {
+        return "", err
+    }
+
+    nonce := make([]byte, gcm.NonceSize())
+    _, err = rand.Read(nonce)
+
+    if err != nil {
+        return "", err
+    }
+
+    ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+
+	return string(ciphertext), nil
+}
+
+func Decrypt(key string, ciphertext []byte) (string, error) {
+	aes, err := aes.NewCipher([]byte(key)[:32])
+
+	if err != nil {
+		return "", err
+	}
+
+    gcm, err := cipher.NewGCM(aes)
+
+    if err != nil {
+        return "", err
+    }
+
+    nonceSize := gcm.NonceSize()
+    nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+
+    plaintext, err := gcm.Open(nil, []byte(nonce), []byte(ciphertext), nil)
+    if err != nil {
+        return "", err
+    }
+
+	return string(plaintext), nil
 }
