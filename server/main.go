@@ -1,18 +1,26 @@
+// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 
 	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	// "github.com/FelineJTD/secure-chat-kripto/server/middlewares"
 )
+
+var addr = flag.String("addr", ":8080", "http service address")
 
 type Message struct {
 	Sender  int    `json:"sender"`
@@ -23,61 +31,10 @@ type PublicKey struct {
 	PublicKey string `json:"public_key"`
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
-func reader(key string, conn *websocket.Conn) {
-	var err error = nil
-	defer logger.HandleError(err)
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			return
-		}
-		logger.Info("Message received from client: " + string(p))
-
-		// DO SOMETHING HERE
-		message := Message{}
-		json.Unmarshal(p, &message)
-		// this just returns the same message to client
-		msgToSend := "You said: " + string(message.Message)
-		// payload in json with structure
-		// { sender: "server", message: msgToSend }
-		payload := []byte(`{"sender":"server","message":"` + msgToSend + `"}`)
-
-		logger.Debug("Shared Key: " + key) // This is just to silence the linter
-		// TODO: Uncomment this to enable encryption, need testing
-		// payload := handlers.Encrypt(key, payload) // some json marshalled version of this
-
-		if err := conn.WriteMessage(messageType, payload); err != nil {
-			return
-		}
-	}
-}
-
-func homePage(w http.ResponseWriter, r *http.Request) {
+func serveHome(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Home Page")
 }
 
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	var err error = nil
-	defer logger.HandleError(err)
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-	logger.Info("Client Connected")
-
-	reader(r.RemoteAddr, ws)
-}
-
-// TODO: Test this endpoint
-// Since the spec requested a handshake, It might be better to emulate it using a websocket, but this will do for now
-// In essence the client makes a PUT request sending its public key, the server then generates a shared key and sends back its public key
-// The client then calculates the shared key and can now send encrypted messages
 func keyEndpoint(w http.ResponseWriter, r *http.Request) {
 	var err error = nil
 	defer logger.HandleError(err)
@@ -114,11 +71,13 @@ func keyEndpoint(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Public Key Sent")
 }
 
-func setupRoutes() http.Handler {
+func setupRoutes(hub *Hub) http.Handler {
 	r := chi.NewRouter()
 
-	r.Get("/", homePage)
-	r.Get("/chat", wsEndpoint)
+	r.Get("/", serveHome)
+	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 
 	// TODO: Uncomment this to enable decryption middleware, need testing
 	// r.Route("/chat", func(r chi.Router) {
@@ -132,9 +91,20 @@ func setupRoutes() http.Handler {
 }
 
 func main() {
-	logger.Info("Initiating server...")
-	r := setupRoutes()
+	fmt.Println("Initiating server...")
+	flag.Parse()
+	hub := newHub()
+	go hub.run()
 
-	logger.Info("Server started at http://localhost:8080")
-	logger.HandleFatal(http.ListenAndServe(":8080", r))
+	setupRoutes(hub)
+	fmt.Println("Server started at http://localhost:8080")
+
+	server := &http.Server{
+		Addr:              *addr,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }

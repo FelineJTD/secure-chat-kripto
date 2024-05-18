@@ -19,7 +19,8 @@
   let isConnected = false
 
   const connectWS = () => {
-    socket = new WebSocket("ws://localhost:8080/chat")
+    console.log("Connecting to WS")
+    socket = new WebSocket("ws://localhost:8080/ws")
     socket.addEventListener("open", ()=> {
       console.log("Opened")
       isConnected = true
@@ -55,7 +56,6 @@
       sender: id,
       message
     }
-    messages = [payload, ...messages]
     const payloadString = JSON.stringify(payload)
     socket.send(payloadString)
   }

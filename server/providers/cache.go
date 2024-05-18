@@ -9,7 +9,7 @@ var (
 )
 
 func init() {
-	Pool = newPool("redis://cache:6379/0")	
+	Pool = newPool("redis://localhost:6379/0")	
 }
 
 func newPool(server string) *redis.Pool {
