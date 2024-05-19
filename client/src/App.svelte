@@ -7,13 +7,14 @@
   import { onMount } from "svelte";
 
   type Message = {
-    sender: number
+    sender: string
     message: string
   }
 
   let messages: Message[] = []
+  let id: string
 
-  const id = Math.floor(Math.random() * 1000000)
+  // const id = Math.floor(Math.random() * 1000000)
 
   let socket: WebSocket
   let isConnected = false
@@ -43,6 +44,8 @@
   }
 
   onMount(() => {
+    const url = window.location.href
+    id = url.split(":")[2].split("/")[0]
     connectWS()
 
     return () => {
@@ -63,7 +66,7 @@
 
 <main class="bg-neutral-100 h-screen">
   <Container>
-    <ChatHeader sender="Conan" isConnected={isConnected} />
+    <ChatHeader sender={id} isConnected={isConnected} />
     <ChatContainer>
       <!-- loop with index -->
       {#each messages as message, i}

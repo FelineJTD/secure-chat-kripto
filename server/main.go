@@ -59,18 +59,18 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Home Page")
 }
 
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	var err error = nil
-	defer logger.HandleError(err)
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-	logger.Info("Client Connected")
+// func wsEndpoint(w http.ResponseWriter, r *http.Request) {
+// 	var err error = nil
+// 	defer logger.HandleError(err)
+// 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+// 	ws, err := upgrader.Upgrade(w, r, nil)
+// 	if err != nil {
+// 		return
+// 	}
+// 	logger.Info("Client Connected")
 
-	reader(r.RemoteAddr, ws)
-}
+// 	reader(r.RemoteAddr, ws)
+// }
 
 // TODO: Test this endpoint
 // Since the spec requested a handshake, It might be better to emulate it using a websocket, but this will do for now
@@ -121,10 +121,13 @@ func setupRoutes(hub *Hub) http.Handler {
 	})
 
 	// TODO: Uncomment this to enable decryption middleware, need testing
-	// r.Route("/chat", func(r chi.Router) {
-	// 	r.Use(middlewares.DecryptMiddleware)
-	// 	r.Get("/", wsEndpoint)
-	// })
+	r.Route("/chat", func(r chi.Router) {
+		// r.Use(middlewares.DecryptMiddleware)
+		// r.Get("/", wsEndpoint)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			serveWs(hub, w, r)
+		})
+	})
 
 	r.Put("/key", keyEndpoint)
 
@@ -138,24 +141,6 @@ func main() {
 
 	r:= setupRoutes(hub)
 
-	// server := &http.Server{
-	// 	Addr:              *addr,
-	// 	ReadHeaderTimeout: 3000,
-	// }
-
 	logger.Info("Server started at http://localhost:8080")
 	logger.HandleFatal(http.ListenAndServe(":8080", r))
-	// err := server.ListenAndServe()
-	// if err != nil {
-	// 	logger.HandleError(err)
-	// }
 }
-
-
-// func main() {
-// 	logger.Info("Initiating server...")
-// 	r := setupRoutes()
-
-// 	logger.Info("Server started at http://localhost:8080")
-// 	logger.HandleFatal(http.ListenAndServe(":8080", r))
-// }
