@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"crypto/cipher"
-	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 
-	"crypto/aes" // replace with GoBlockC
+	"crypto/ecdh" // TODO: implement own ECDH
+	// "crypto/aes" // TODO: replace with GoBlockC
+	"github.com/nart4hire/goblockc"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -112,53 +112,46 @@ func GetSharedKey(address string) (string, error) {
 	return key, nil
 }
 
-// TODO: Replace with GoBlockC
 func Encrypt(key string, plaintext []byte) (string, error) {
-	// TODO: Hash this key instead to get some bytes if needed
-	aes, err := aes.NewCipher([]byte(key)[:32])
+	gbc, err := goblockc.NewBlock([]byte(key)[:16])
 
 	if err != nil {
 		return "", err
 	}
 
-    gcm, err := cipher.NewGCM(aes)
+	iv := make([]byte, gbc.BlockSize())
 
-    if err != nil {
-        return "", err
-    }
+    ctr, err := goblockc.NewCTR(gbc, iv)
 
-    nonce := make([]byte, gcm.NonceSize())
-    _, err = rand.Read(nonce)
+	if err != nil {
+		return "", err
+	}
 
-    if err != nil {
-        return "", err
-    }
-
-    ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	ciphertext := make([]byte, len(plaintext))
+	copy(ciphertext, plaintext)
+    ctr.XORKeyStream(ciphertext, ciphertext)
 
 	return string(ciphertext), nil
 }
 
 func Decrypt(key string, ciphertext []byte) (string, error) {
-	aes, err := aes.NewCipher([]byte(key)[:32])
+	gbc, err := goblockc.NewBlock([]byte(key)[:16])
 
 	if err != nil {
 		return "", err
 	}
 
-    gcm, err := cipher.NewGCM(aes)
+	iv := make([]byte, gbc.BlockSize())
 
-    if err != nil {
-        return "", err
-    }
+    ctr, err := goblockc.NewCTR(gbc, iv)
 
-    nonceSize := gcm.NonceSize()
-    nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	if err != nil {
+		return "", err
+	}
 
-    plaintext, err := gcm.Open(nil, []byte(nonce), []byte(ciphertext), nil)
-    if err != nil {
-        return "", err
-    }
+	plaintext := make([]byte, len(ciphertext))
+	copy(plaintext, ciphertext)
+    ctr.XORKeyStream(plaintext, plaintext)
 
 	return string(plaintext), nil
 }
