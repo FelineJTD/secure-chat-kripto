@@ -5,6 +5,7 @@
   import ChatInput from "./lib/ChatInput.svelte";
   import Container from "./lib/Container.svelte";
   import { onMount } from "svelte";
+  // import { Point, generatePrivateKey, generatePublicKey } from "./utils/ecc";
 
   type Message = {
     sender: string
@@ -13,8 +14,8 @@
 
   let messages: Message[] = []
   let id: string
-
-  // const id = Math.floor(Math.random() * 1000000)
+  // let privKey: bigint | null
+  // let pubKey: Point | null
 
   let socket: WebSocket
   let isConnected = false
@@ -44,6 +45,17 @@
   }
 
   onMount(() => {
+    // // Try to get private key from local storage
+    // privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
+    // pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
+    // if (!privKey || !pubKey) {
+    //   // If private key is not found, generate a new one
+    //   privKey = generatePrivateKey()
+    //   pubKey = generatePublicKey(privKey)
+    //   localStorage.setItem("privKey", privKey.toString())
+    //   localStorage.setItem("pubKey", pubKey.toString())
+    // } 
+
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
     connectWS()
