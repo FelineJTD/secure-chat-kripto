@@ -5,7 +5,6 @@
   import ChatInput from "./lib/ChatInput.svelte";
   import Container from "./lib/Container.svelte";
   import { onMount } from "svelte";
-  // import { Point, generatePrivateKey, generatePublicKey } from "./utils/ecc";
 
   type Message = {
     sender: string
@@ -14,8 +13,8 @@
 
   let messages: Message[] = []
   let id: string
-  // let privKey: bigint | null
-  // let pubKey: Point | null
+  let privKey: bigint | null
+  let pubKey: Point | null
 
   let socket: WebSocket
   let isConnected = false
@@ -44,17 +43,146 @@
     })
   }
 
+  const p = 11n;
+const a = 1n;
+const b = 5n;
+const Gx = 2n;
+const Gy = 9n;
+// const n =
+//   115792089210356248762697446949407573529996955224135760342422259061068512044369n;
+
+// Define a point class to represent points on the curve
+export class Point {
+  x: bigint;
+  y: bigint;
+
+  constructor(x: bigint, y: bigint) {
+    this.x = x;
+    this.y = y;
+  }
+
+  // comparison function for points
+  equals(other: Point): boolean {
+    return this.x === other.x && this.y === other.y;
+  }
+
+  sameXDiffY(other: Point): boolean {
+    return this.x === other.x && this.y !== other.y;
+  }
+}
+
+function modInverse(a: bigint, m: bigint): bigint {
+  a = ((a % m) + m) % m;
+  for (let x = 1n; x < m; x++) {
+    if ((a * x) % m === 1n) {
+      return x;
+    }
+  }
+  return 1n;
+}
+
+// function modInverse(a, m) {
+//   // validate inputs
+//   [a, m] = [Number(a), Number(m)]
+//   if (Number.isNaN(a) || Number.isNaN(m)) {
+//     return NaN // invalid input
+//   }
+//   a = (a % m + m) % m
+//   if (!a || m < 2) {
+//     return NaN // invalid input
+//   }
+//   // find the gcd
+//   const s = []
+//   let b = m
+//   while(b) {
+//     [a, b] = [b, a % b]
+//     s.push({a, b})
+//   }
+//   if (a !== 1) {
+//     return NaN // inverse does not exists
+//   }
+//   // find the inverse
+//   let x = 1
+//   let y = 0
+//   for(let i = s.length - 2; i >= 0; --i) {
+//     [x, y] = [y,  x - y * Math.floor(s[i].a / s[i].b)]
+//   }
+//   return (y % m + m) % m
+// }
+
+// Point addition on the curve
+function pointAddition(p1: Point, p2: Point): Point {
+  if (p1.equals(p2)) {
+    return pointDoubling(p1);
+  } else if (p1.sameXDiffY(p2)) {
+    return new Point(0n, 0n);
+  } else {
+    // Calculate slope
+    const slope = (p2.y - p1.y) / (p2.x - p1.x);
+    // Calculate x-coordinate
+    const x = (slope * slope - p1.x - p2.x) % p;
+    // Calculate y-coordinate
+    const y = (slope * (p1.x - x) - p1.y) % p;
+    return new Point(x, y);
+  }
+}
+
+// Point doubling on the curve
+function pointDoubling(p1: Point): Point {
+  // Calculate slope
+  const slope = ((((3n * p1.x * p1.x + a) * modInverse(2n * p1.y, p)) % p) + 11n) %p;
+  // Calculate x-coordinate
+  const x = (((slope * slope - 2n * p1.x) % p) + 11n) % p;
+  // Calculate y-coordinate
+  const y = (((slope * (p1.x - x) - p1.y) % p) + 11n) % p;
+  return new Point(x, y);
+}
+
+// Scalar multiplication on the curve
+function scalarMultiply(k: bigint, p1: Point): Point {
+  let result = new Point(0n, 0n);
+  let addend = p1;
+  while (k > 0) {
+    if (k % 2n === 1n) {
+      result = pointAddition(result, addend);
+    }
+    addend = pointDoubling(addend);
+    k = k / 2n;
+  }
+  return result;
+}
+
+// Generate a random private key
+export function generatePrivateKey(): bigint {
+  const hexString = Array(16)
+    .fill(0)
+    .map(() => Math.round(Math.random() * 0xf).toString(16))
+    .join("");
+
+  const randomInt = BigInt(`0x${hexString}`);
+  return randomInt;
+}
+
+// Generate the corresponding public key
+export function generatePublicKey(privateKey: bigint): Point {
+  return scalarMultiply(privateKey, new Point(Gx, Gy));
+}
+
   onMount(() => {
     // // Try to get private key from local storage
-    // privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
-    // pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
-    // if (!privKey || !pubKey) {
+    privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
+    console.log("privKey", privKey)
+    pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
+    console.log("pubKey", pointDoubling(new Point(Gx, Gy)))
+    if (!privKey || !pubKey) {
     //   // If private key is not found, generate a new one
-    //   privKey = generatePrivateKey()
-    //   pubKey = generatePublicKey(privKey)
-    //   localStorage.setItem("privKey", privKey.toString())
-    //   localStorage.setItem("pubKey", pubKey.toString())
-    // } 
+      privKey = generatePrivateKey()
+      console.log("privKey", privKey)
+      // pubKey = generatePublicKey(privKey)
+      console.log("pubKey", pubKey)
+      localStorage.setItem("privKey", privKey.toString())
+      // localStorage.setItem("pubKey", pubKey.toString())
+    } 
 
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
