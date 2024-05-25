@@ -69,6 +69,10 @@ export class Point {
   sameXDiffY(other: Point): boolean {
     return this.x === other.x && this.y !== other.y;
   }
+
+  isInfinite(): boolean {
+    return this.x === 0n && this.y === 0n;
+  }
 }
 
 function modInverse(a: bigint, m: bigint): bigint {
@@ -116,6 +120,10 @@ function pointAddition(p1: Point, p2: Point): Point {
     return pointDoubling(p1);
   } else if (p1.sameXDiffY(p2)) {
     return new Point(0n, 0n);
+  } else if (p1.isInfinite()) {
+    return p2;
+  } else if (p2.isInfinite()) {
+    return p1;
   } else {
     // Calculate slope
     const slope = ((((p2.y - p1.y) * modInverse(p2.x - p1.x, p)) % p) + p) % p;
@@ -143,7 +151,7 @@ function pointDoubling(p1: Point): Point {
 function scalarMultiply(k: bigint, p1: Point): Point {
   let result = new Point(0n, 0n);
   let addend = p1;
-  while (k > 0) {
+  while (k > 0n) {
     if (k % 2n === 1n) {
       result = pointAddition(result, addend);
     }
@@ -174,7 +182,7 @@ export function generatePublicKey(privateKey: bigint): Point {
     privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
     console.log("privKey", privKey)
     pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
-    console.log("pubKey", pointAddition(new Point(Gx, Gy), new Point(5n, 5n)))
+    console.log("pubKey", scalarMultiply(9n, new Point(Gx, Gy)))
     if (!privKey || !pubKey) {
     //   // If private key is not found, generate a new one
       privKey = generatePrivateKey()
