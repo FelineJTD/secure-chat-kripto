@@ -73,6 +73,10 @@ export class Point {
   isInfinite(): boolean {
     return this.x === 0n && this.y === 0n;
   }
+
+  convertToMinus(): Point {
+    return new Point(this.x, -this.y);
+  }
 }
 
 function modInverse(a: bigint, m: bigint): bigint {
@@ -173,6 +177,36 @@ export function generatePublicKey(privateKey: bigint): Point {
   return scalarMultiply(privateKey, new Point(Gx, Gy));
 }
 
+// Encrypt a message using ECC
+export function encryptMessage(publicKey: Point, message: string): [Point, Point] {
+  const dummy = new Point(24601n, 33894n);
+  const k = generatePrivateKey();
+  // a = g^k mod p
+  const a = scalarMultiply(k, new Point(Gx, Gy));
+  // b = m*P^k mod p
+  // const m = BigInt(message);
+  // console.log("m", dummy)
+  const b = pointAddition(scalarMultiply(k, publicKey), dummy);
+  console.log("a", a)
+  console.log("b", b)
+
+  return [a, b]
+}
+
+// Decrypt a message using ECC
+export function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): Point {
+  // const [a, b, message] = ciphertext.split(",");
+  // const aPoint = new Point(BigInt(a), BigInt(b));
+  const [a, b] = ciphertext;
+  const m = pointAddition(b, scalarMultiply(privateKey, a).convertToMinus());
+  console.log("m", m.x)
+  console.log("m", m.y)
+  return m;
+
+  // const m = pointAddition(aPoint, scalarMultiply(privateKey, aPoint));
+  // return m.x.toString();
+}
+
   onMount(() => {
     // // Try to get private key from local storage
     privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
@@ -182,10 +216,16 @@ export function generatePublicKey(privateKey: bigint): Point {
       privKey = generatePrivateKey()
       pubKey = generatePublicKey(privKey)
       localStorage.setItem("privKey", privKey.toString())
-      localStorage.setItem("pubKey", pubKey.toString())
+      // localStorage.setItem("pubKey", JSON.stringify(pubKey))
     } 
     console.log("privKey", privKey)
     console.log("pubKey", pubKey)
+
+    const message = "Hello World!"
+    const encryptedMessage = encryptMessage(pubKey, message)
+    console.log("Encrypted message", encryptedMessage)
+    const decryptedMessage = decryptMessage(privKey, encryptedMessage)
+    console.log("Decrypted message", decryptedMessage)
 
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
