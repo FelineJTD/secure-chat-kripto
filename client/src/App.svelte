@@ -118,11 +118,12 @@ function pointAddition(p1: Point, p2: Point): Point {
     return new Point(0n, 0n);
   } else {
     // Calculate slope
-    const slope = (p2.y - p1.y) / (p2.x - p1.x);
+    const slope = ((((p2.y - p1.y) * modInverse(p2.x - p1.x, p)) % p) + p) % p;
+    console.log("slope", slope)
     // Calculate x-coordinate
-    const x = (slope * slope - p1.x - p2.x) % p;
+    const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
     // Calculate y-coordinate
-    const y = (slope * (p1.x - x) - p1.y) % p;
+    const y = (((slope * (p1.x - x) - p1.y) % p) + p) % p;
     return new Point(x, y);
   }
 }
@@ -130,11 +131,11 @@ function pointAddition(p1: Point, p2: Point): Point {
 // Point doubling on the curve
 function pointDoubling(p1: Point): Point {
   // Calculate slope
-  const slope = ((((3n * p1.x * p1.x + a) * modInverse(2n * p1.y, p)) % p) + 11n) %p;
+  const slope = ((((3n * p1.x * p1.x + a) * modInverse(2n * p1.y, p)) % p) + p) %p;
   // Calculate x-coordinate
-  const x = (((slope * slope - 2n * p1.x) % p) + 11n) % p;
+  const x = (((slope * slope - 2n * p1.x) % p) + p) % p;
   // Calculate y-coordinate
-  const y = (((slope * (p1.x - x) - p1.y) % p) + 11n) % p;
+  const y = (((slope * (p1.x - x) - p1.y) % p) + p) % p;
   return new Point(x, y);
 }
 
@@ -173,7 +174,7 @@ export function generatePublicKey(privateKey: bigint): Point {
     privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
     console.log("privKey", privKey)
     pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
-    console.log("pubKey", pointDoubling(new Point(Gx, Gy)))
+    console.log("pubKey", pointAddition(new Point(Gx, Gy), new Point(5n, 5n)))
     if (!privKey || !pubKey) {
     //   // If private key is not found, generate a new one
       privKey = generatePrivateKey()
