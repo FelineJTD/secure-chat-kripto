@@ -43,11 +43,11 @@
     })
   }
 
-  const p = 11n;
-const a = 1n;
-const b = 5n;
-const Gx = 2n;
-const Gy = 9n;
+  const p = 76511n;
+  const a = 71479n;
+  const b = 52157n;
+  const Gx = 14703n;
+  const Gy = 38268n;
 // const n =
 //   115792089210356248762697446949407573529996955224135760342422259061068512044369n;
 
@@ -85,35 +85,6 @@ function modInverse(a: bigint, m: bigint): bigint {
   return 1n;
 }
 
-// function modInverse(a, m) {
-//   // validate inputs
-//   [a, m] = [Number(a), Number(m)]
-//   if (Number.isNaN(a) || Number.isNaN(m)) {
-//     return NaN // invalid input
-//   }
-//   a = (a % m + m) % m
-//   if (!a || m < 2) {
-//     return NaN // invalid input
-//   }
-//   // find the gcd
-//   const s = []
-//   let b = m
-//   while(b) {
-//     [a, b] = [b, a % b]
-//     s.push({a, b})
-//   }
-//   if (a !== 1) {
-//     return NaN // inverse does not exists
-//   }
-//   // find the inverse
-//   let x = 1
-//   let y = 0
-//   for(let i = s.length - 2; i >= 0; --i) {
-//     [x, y] = [y,  x - y * Math.floor(s[i].a / s[i].b)]
-//   }
-//   return (y % m + m) % m
-// }
-
 // Point addition on the curve
 function pointAddition(p1: Point, p2: Point): Point {
   if (p1.equals(p2)) {
@@ -147,23 +118,48 @@ function pointDoubling(p1: Point): Point {
   return new Point(x, y);
 }
 
+function isOdd(n: bigint)
+{
+ 
+    // n^1 is n+1, then even, else odd
+    if ((n ^ 1n) == (n + 1n))
+        return false;
+    else
+        return true;
+}
+
 // Scalar multiplication on the curve
 function scalarMultiply(k: bigint, p1: Point): Point {
   let result = new Point(0n, 0n);
   let addend = p1;
   while (k > 0n) {
-    if (k % 2n === 1n) {
+    if (isOdd(k)) {
       result = pointAddition(result, addend);
     }
     addend = pointDoubling(addend);
-    k = k / 2n;
+    k = k >> 1n;
   }
   return result;
 }
 
+// function scalarMultiply(k: BigInteger, P: {x: BigInteger, y: BigInteger}): {x: BigInteger, y: BigInteger} {
+//     let result = { x: BigInteger.zero, y: BigInteger.zero }; // Initialize the result to the point at infinity
+//     let addend = P;
+
+//     while (!k.isZero()) {
+//         if (k.isOdd()) {
+//             result = pointAdd(result, addend);
+//         }
+//         addend = pointAdd(addend, addend);
+//         k = k.shiftRight(1); // Equivalent to dividing k by 2
+//     }
+
+//     return result;
+// }
+
 // Generate a random private key
 export function generatePrivateKey(): bigint {
-  const hexString = Array(16)
+  const hexString = Array(4)
     .fill(0)
     .map(() => Math.round(Math.random() * 0xf).toString(16))
     .join("");
@@ -180,18 +176,16 @@ export function generatePublicKey(privateKey: bigint): Point {
   onMount(() => {
     // // Try to get private key from local storage
     privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
-    console.log("privKey", privKey)
     pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
-    console.log("pubKey", scalarMultiply(9n, new Point(Gx, Gy)))
     if (!privKey || !pubKey) {
-    //   // If private key is not found, generate a new one
+      // If private key is not found, generate a new one
       privKey = generatePrivateKey()
-      console.log("privKey", privKey)
-      // pubKey = generatePublicKey(privKey)
-      console.log("pubKey", pubKey)
+      pubKey = generatePublicKey(privKey)
       localStorage.setItem("privKey", privKey.toString())
-      // localStorage.setItem("pubKey", pubKey.toString())
+      localStorage.setItem("pubKey", pubKey.toString())
     } 
+    console.log("privKey", privKey)
+    console.log("pubKey", pubKey)
 
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
