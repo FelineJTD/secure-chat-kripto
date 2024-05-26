@@ -4,6 +4,7 @@
   import ChatHeader from "./lib/ChatHeader.svelte";
   import ChatInput from "./lib/ChatInput.svelte";
   import Container from "./lib/Container.svelte";
+  import KeyInputs from "./lib/KeyInputs.svelte";
   import { onMount } from "svelte";
 
   type Message = {
@@ -301,16 +302,20 @@ function JSONToPoints(json: string): [Point, Point] {
 </script>
 
 <main class="bg-neutral-100 h-screen">
-  <Container>
-    <ChatHeader sender={id} isConnected={isConnected} />
-    <ChatContainer>
-      <!-- loop with index -->
-      {#each messages as message, i}
-        <ChatBubble isSelf={message.sender === id} message={message.message} />
-      {/each}
-    </ChatContainer>
-    <ChatInput onSend={onSend} />
-  </Container>
+  <div class="flex flex-col lg:flex-row w-full h-screen">
+    <KeyInputs />
+    <Container>
+      <ChatHeader sender={id} isConnected={isConnected} />
+      <ChatContainer>
+        <!-- loop with index -->
+        {#each messages as message, i}
+          <ChatBubble isSelf={message.sender === id} message={message.message} />
+        {/each}
+      </ChatContainer>
+      <ChatInput onSend={onSend} />
+    </Container>
+    <div class="w-0 lg:w-1/3" />
+  </div>
 </main>
 
 <style>
