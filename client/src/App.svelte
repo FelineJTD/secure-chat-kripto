@@ -28,7 +28,11 @@
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
       const payload = JSON.parse(event.data)
-      messages = [payload, ...messages]
+      const message = {
+        sender: payload.sender,
+        message: decryptMessage(privKey as bigint, JSONToPoints(payload.message))
+      }
+      messages = [message, ...messages]
     })
     socket.addEventListener("close", () => {
       console.log("Closed")
@@ -43,7 +47,7 @@
     })
   }
 
-  const p = 76511n;
+  const p = 6564449n;
   const a = 71479n;
   const b = 52157n;
   const Gx = 14703n;
@@ -240,6 +244,15 @@ function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): string 
   return hexToString(bigIntToHex((decryptedMessage.x) + decryptedMessage.y * p))
 }
 
+function pointsToJSON(point: [Point, Point]): string {
+  return JSON.stringify([{x: point[0].x.toString(), y: point[0].y.toString()}, {x: point[1].x.toString(), y: point[1].y.toString()}])
+}
+
+function JSONToPoints(json: string): [Point, Point] {
+  const points = JSON.parse(json)
+  return [new Point(BigInt(points[0].x), BigInt(points[0].y)), new Point(BigInt(points[1].x), BigInt(points[1].y))]
+}
+
 
   onMount(() => {
     // // Try to get private key from local storage
@@ -255,9 +268,8 @@ function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): string 
     console.log("privKey", privKey)
     console.log("pubKey", pubKey)
 
-    const message = "Heyy"
+    const message = "   a"
     const msgInt = hexToBigInt(stringToHex(message))
-    const msgPoint = new Point(msgInt, calculateY(msgInt))
     console.log("Message", msgInt)
     const back = hexToString(bigIntToHex(msgInt))
     console.log("Back", back)
@@ -276,9 +288,11 @@ function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): string 
   })
 
   const onSend = (message: string) => {
+    if (!pubKey) return
+
     const payload = {
       sender: id,
-      message
+      message: pointsToJSON(encryptMessage(pubKey, message))
     }
     const payloadString = JSON.stringify(payload)
     socket.send(payloadString)
