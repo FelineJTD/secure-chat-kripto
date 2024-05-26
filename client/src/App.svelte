@@ -102,34 +102,21 @@
     socket = new WebSocket("ws://localhost:8080/chat")
     socket.addEventListener("open", ()=> {
       console.log("Opened")
-      // if (!privKeyECDH || !pubKeyECDH) {
-      //   const keyPair = generateKeyPair()
-      //   privKeyECDH = keyPair[0]
-      //   pubKeyECDH = keyPair[1]
-      //   // Send public key to server
-      //   socket.send(pointToJSON(pubKeyECDH))
-      // }
+      if (!privKeyECDH || !pubKeyECDH) {
+        const keyPair = generateKeyPair()
+        privKeyECDH = keyPair[0]
+        pubKeyECDH = keyPair[1]
+        // Send public key to server
+        socket.send(JSON.stringify({
+          port: id,
+          publickey: pointToJSON(pubKeyECDH)
+        }))
+        console.log("Sent public key ", pointToJSON(pubKeyECDH))
+      }
       isConnected = true
     })
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
-      // TODO: Move to DoECDH
-      // if (!sharedKeyECDH) {
-      //   try {
-      //     const pubKey = JSONToPoint(event.data)
-      //     sharedKeyECDH = deriveSharedSecret(privKeyECDH as bigint, pubKey)
-      //     console.log("sharedKeyECDH", sharedKeyECDH)
-      //   } catch (err) {
-      //     console.log("Error ", err)
-      //   }
-      // } else {
-      //   const payload = JSON.parse(event.data)
-      //   const message = {
-      //     sender: payload.sender,
-      //     message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
-      //   }
-      //   messages = [message, ...messages]
-      // }
       const plaintext = cipher(event.data, false)
         .then((text) => {
           console.log("Decrypted: ", text)
@@ -140,6 +127,27 @@
           }
           messages = [message, ...messages]
         })
+      // TODO: Move to DoECDH
+      // if (!sharedKeyECDH) {
+      //   try {
+      //     console.log("Received public key ", event.data)
+      //     const pubKey = new Point(BigInt(JSON.parse(event.data).X), BigInt(JSON.parse(event.data).Y))
+      //     sharedKeyECDH = deriveSharedSecret(privKeyECDH as bigint, pubKey)
+      //     // Set local shared key
+      //     localStorage.setItem("sharedKeyECDH", pointToJSON(sharedKeyECDH))
+      //     console.log("sharedKeyECDH", sharedKeyECDH)
+      //   } catch (err) {
+      //     console.log("Error ", err)
+      //     socket.close()
+      //   }
+      // } else {
+      //   const payload = JSON.parse(event.data)
+      //   const message = {
+      //     sender: payload.sender,
+      //     message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
+      //   }
+      //   messages = [message, ...messages]
+      // }
     })
     socket.addEventListener("close", () => {
       console.log("Closed")
