@@ -79,6 +79,26 @@ export class Point {
   }
 }
 
+function stringToHex(s: string): string {
+  return s.split("").map((c) => c.charCodeAt(0).toString(16)).join("");
+}
+
+function hexToBigInt(h: string): bigint {
+  return BigInt(`0x${h}`);
+}
+
+function bigIntToHex(n: bigint): string {
+  return n.toString(16);
+}
+
+function hexToString(h: string): string {
+  return h.match(/.{1,2}/g)!.map((byte) => String.fromCharCode(parseInt(byte, 16))).join("");
+}
+
+function calculateY(x: bigint): bigint {
+  return (((x * x * x + a * x + b) % p) + p) % p;
+}
+
 function modInverse(a: bigint, m: bigint): bigint {
   a = ((a % m) + m) % m;
   for (let x = 1n; x < m; x++) {
@@ -102,7 +122,6 @@ function pointAddition(p1: Point, p2: Point): Point {
   } else {
     // Calculate slope
     const slope = ((((p2.y - p1.y) * modInverse(p2.x - p1.x, p)) % p) + p) % p;
-    console.log("slope", slope)
     // Calculate x-coordinate
     const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
     // Calculate y-coordinate
@@ -162,7 +181,7 @@ function scalarMultiply(k: bigint, p1: Point): Point {
 // }
 
 // Generate a random private key
-export function generatePrivateKey(): bigint {
+function generatePrivateKey(): bigint {
   const hexString = Array(4)
     .fill(0)
     .map(() => Math.round(Math.random() * 0xf).toString(16))
@@ -173,20 +192,20 @@ export function generatePrivateKey(): bigint {
 }
 
 // Generate the corresponding public key
-export function generatePublicKey(privateKey: bigint): Point {
+function generatePublicKey(privateKey: bigint): Point {
   return scalarMultiply(privateKey, new Point(Gx, Gy));
 }
 
 // Encrypt a message using ECC
-export function encryptMessage(publicKey: Point, message: string): [Point, Point] {
-  const dummy = new Point(24601n, 33894n);
+function encryptECC(publicKey: Point, message: Point): [Point, Point] {
+  // const dummy = new Point(24601n, 33894n);
   const k = generatePrivateKey();
   // a = g^k mod p
   const a = scalarMultiply(k, new Point(Gx, Gy));
   // b = m*P^k mod p
   // const m = BigInt(message);
   // console.log("m", dummy)
-  const b = pointAddition(scalarMultiply(k, publicKey), dummy);
+  const b = pointAddition(scalarMultiply(k, publicKey), message);
   console.log("a", a)
   console.log("b", b)
 
@@ -194,18 +213,33 @@ export function encryptMessage(publicKey: Point, message: string): [Point, Point
 }
 
 // Decrypt a message using ECC
-export function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): Point {
+function decryptECC(privateKey: bigint, ciphertext: [Point, Point]): Point {
   // const [a, b, message] = ciphertext.split(",");
   // const aPoint = new Point(BigInt(a), BigInt(b));
   const [a, b] = ciphertext;
   const m = pointAddition(b, scalarMultiply(privateKey, a).convertToMinus());
-  console.log("m", m.x)
-  console.log("m", m.y)
   return m;
 
   // const m = pointAddition(aPoint, scalarMultiply(privateKey, aPoint));
   // return m.x.toString();
 }
+
+function encryptMessage(publicKey: Point, message: string): [Point, Point] {
+  const msgInt = hexToBigInt(stringToHex(message))
+  const msgRemainder = msgInt % p
+  const msgMultiple = msgInt /p
+  // console.log(msgInt === msgRemainder + (msgMultiple * p))
+  const msgPoint = new Point(msgRemainder, msgMultiple)
+  console.log("Message", msgPoint)
+  return encryptECC(publicKey, msgPoint)
+}
+
+function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): string {
+  const decryptedMessage = decryptECC(privateKey, ciphertext)
+  console.log("Decrypted message", decryptedMessage)
+  return hexToString(bigIntToHex((decryptedMessage.x) + decryptedMessage.y * p))
+}
+
 
   onMount(() => {
     // // Try to get private key from local storage
@@ -221,7 +255,12 @@ export function decryptMessage(privateKey: bigint, ciphertext: [Point, Point]): 
     console.log("privKey", privKey)
     console.log("pubKey", pubKey)
 
-    const message = "Hello World!"
+    const message = "Heyy"
+    const msgInt = hexToBigInt(stringToHex(message))
+    const msgPoint = new Point(msgInt, calculateY(msgInt))
+    console.log("Message", msgInt)
+    const back = hexToString(bigIntToHex(msgInt))
+    console.log("Back", back)
     const encryptedMessage = encryptMessage(pubKey, message)
     console.log("Encrypted message", encryptedMessage)
     const decryptedMessage = decryptMessage(privKey, encryptedMessage)
