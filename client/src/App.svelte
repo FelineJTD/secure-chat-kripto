@@ -6,7 +6,10 @@
   import Container from "./lib/Container.svelte";
   import KeyInputs from "./lib/KeyInputs.svelte";
   import { onMount } from "svelte";
-  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, generatePublicKey, Point, scalarMultiply } from "./utils/ecc";
+  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, Point } from "./utils/ecc";
+  import wasm from "./wasm/main.go";
+  import type { Signature, SchnorrKeys } from "./wasm/main.go";
+
 
   type Message = {
     sender: string
@@ -28,6 +31,71 @@
 
   let status: string
   let error: string
+
+  type Schnorr = {
+    p: string
+    q: string
+    gen: string
+  }
+
+  let schnorr: Schnorr | null
+  let schnorrKeys: SchnorrKeys | null
+
+  const setupSchnorr = async () => {
+    const sch: Schnorr = await fetch("http://localhost:8080/schnorr", { method: "GET" })
+      .then(response => response.json())
+      .then(data => data)
+      .catch(error => console.log("error", error))
+    // console.log(sch)
+
+    // TODO: Load and Save Keys
+    const keys: SchnorrKeys = await wasm.keys(sch.p, sch.q, sch.gen);
+
+    schnorr = sch
+    schnorrKeys = keys
+  }
+
+  const signMessage = async (message: string) : Promise<Signature | null> => {
+    if (!schnorr || !schnorrKeys) {
+      console.error("No schnorr :'((")
+      return null
+    }
+    let s = await wasm.sign(schnorr.p, schnorr.q, schnorr.gen, schnorrKeys.private, message);
+    console.log("Signature: ", s);
+    return s
+  }
+
+  const verifyMessage = async (message: string, pubkey: string, signature: Signature) : Promise<boolean> => {
+    if (!schnorr) {
+      console.error("No schnorr :'((")
+      return false
+    }
+    let v = await wasm.verify(schnorr.p, schnorr.q, schnorr.gen, pubkey, signature.sign, signature.hash, message);
+    console.log("Verified: ", v);
+    return v
+  }
+
+  // let sharedKey: string | null
+  // // TODO: get Shared Key 
+  // const doECDH = () => {
+  //   sharedKey = "75655731fa806e49bee011347bac08a7"
+  // }
+
+  // Encrypt and Decrypt messages
+  const cipher = async (message: string, isEncrypt: boolean) : Promise<string> => {
+    let key = sharedKeyECDH?.x.toString() ?? ""
+    if (!key) {
+      // TODO: Toast errors
+      console.log("No key")
+      return Promise.reject("No key")
+    }
+
+    if (isEncrypt) {
+      return await wasm.encrypt(key, message);
+    } else {
+      return await wasm.decrypt(key, message);
+    }
+  }
 
   // Connect to WebSocket server
   const connectWS = () => {
@@ -69,6 +137,37 @@
         }
         messages = [message, ...messages]
       }
+      const plaintext = cipher(event.data, false)
+        .then((text) => {
+          console.log("Decrypted: ", text)
+          const payload = JSON.parse(text)
+          const message = {
+            sender: payload.sender,
+            message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
+          }
+          messages = [message, ...messages]
+        })
+      // TODO: Move to DoECDH
+      // if (!sharedKeyECDH) {
+      //   try {
+      //     console.log("Received public key ", event.data)
+      //     const pubKey = new Point(BigInt(JSON.parse(event.data).X), BigInt(JSON.parse(event.data).Y))
+      //     sharedKeyECDH = deriveSharedSecret(privKeyECDH as bigint, pubKey)
+      //     // Set local shared key
+      //     localStorage.setItem("sharedKeyECDH", pointToJSON(sharedKeyECDH))
+      //     console.log("sharedKeyECDH", sharedKeyECDH)
+      //   } catch (err) {
+      //     console.log("Error ", err)
+      //     socket.close()
+      //   }
+      // } else {
+      //   const payload = JSON.parse(event.data)
+      //   const message = {
+      //     sender: payload.sender,
+      //     message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
+      //   }
+      //   messages = [message, ...messages]
+      // }
     })
     socket.addEventListener("close", () => {
       console.log("Closed")
@@ -169,6 +268,11 @@
     // } 
     // console.log("privKey", privKey)
     // console.log("pubKey", pubKey)
+
+    setupSchnorr()
+
+    doECDH()
+
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
     connectWS()
@@ -198,7 +302,12 @@
     }
     const payloadString = JSON.stringify(payload)
     console.log("Sending ", payloadString)
-    socket.send(payloadString)
+
+    cipher(payloadString, true)
+      .then((text) => {
+        console.log("Encrypted: ", text)
+        socket.send(text)
+      })
   }
 </script>
 
