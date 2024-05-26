@@ -151,13 +151,13 @@ func main() {
 	go hub.run()
 
 	r:= setupRoutes(hub)
-	// privKey, pubKey := ecdh.GenerateKeyPair()
-	// fmt.Println("Private Key: ", &privKey)
-	// fmt.Println("Public Key: ", *pubKey)
+	privKey, pubKey := ecdh.GenerateKeyPair()
+	fmt.Println("Private Key: ", *privKey)
+	fmt.Println("Public Key: ", pubKey.X, pubKey.Y)
 	// sharedKey := ecdh.GenerateSharedKey(privKey, pubKey)
 	// fmt.Println("Shared Key: ", sharedKey)
 	// test addition
-	ecdh.TestAddition()
+	// ecdh.TestAddition()
 	// fmt.Println("Addition: ", res)
 
 	logger.Info("Server started at http://localhost:8080")

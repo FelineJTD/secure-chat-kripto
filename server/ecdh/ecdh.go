@@ -8,8 +8,8 @@ import (
 
 // Define the Point structure
 type Point struct {
-	x *big.Int
-	y *big.Int
+	X *big.Int
+	Y *big.Int
 }
 
 // Define the Curve structure
@@ -18,32 +18,26 @@ type Curve struct {
 	b  *big.Int
 	p  *big.Int
 	g  Point
-	n  *big.Int
-	h  *big.Int
 }
 
-// Initialize the curve parameters (example with secp256k1)
-func NewSecp256k1Curve() *Curve {
+// Initialize the curve parameters
+func NewCurve() *Curve {
 	p := new(big.Int)
-	p.SetString("B051", 16)
+	p.SetString("501093B9D01F6A995131F06A99E971704FBED42E0260730567E466958EAF21A5ED4B8458626AFFC325C1172017291D86E8E6818AED1BC6D59AD1E773DD9F2401B577263802C21D82870008D37DB9C72122F4E190EBEA973382E5C18EB3DBFB565EAAB90B98EE880104767", 16)
 
-	a := big.NewInt(38699)
-	b := big.NewInt(7)
+	a := new(big.Int)
+	a.SetString("4EB5DF9B1A22357A539C1F8EE0DBD02F8F5373C1F3DE064A2547D8DF185A0B9411BE82EB93FB61BA51C1EA46A35141B5BBC8083CD642B1F6419BD0263C61C6BA128EE64B224BCCE25A1794C30E20DBEEF8B163DC9662EC0739455849AD2AEAE67CCCDBC84968674D299BF", 16)
+	b := big.NewInt(0)
 
 	gx := new(big.Int)
-	gx.SetString("4613", 16)
+	gx.SetString("1471CFA725EB7FB877EC8F8DE8B3DD9E6F3B880BDD984289BB180E372968D6CDA1A667AF0B859FFC1A2700B8853541FF0416AC5D3C7B00EFDD550614B1956618413453C90E06ED4EC0060204CDC287F140B3153E161D078452734A03510532E3EABAE6E105FFFE2656D59", 16)
 
 	gy := new(big.Int)
-	gy.SetString("746B", 16)
+	gy.SetString("190AE1E86693B1EE024FE0811766A67437F43AE62FE6E431A83EC7ACE5BB5A58AB8C9D296A08622C8ED6572BC9F38B5FCF8FB883C8A8E673C483A978ED3C4A4D9D7CE8F0B7A732107EB4AF7EA85D99B9BDF7C465831A3FB76C8451AF68756E9E6B8FA95EF5A317EF4011F", 16)
 
 	g := Point{gx, gy}
 
-	n := new(big.Int)
-	n.SetString("B051", 16)
-
-	h := big.NewInt(1)
-
-	return &Curve{a, b, p, g, n, h}
+	return &Curve{a, b, p, g}
 }
 
 // Modular inverse: returns x such that (x * k) % p == 1
@@ -53,40 +47,40 @@ func modInverse(k, p *big.Int) *big.Int {
 
 // Point addition: R = P + Q
 func (curve *Curve) Add(p, q *Point) *Point {
-	if p.x == nil && p.y == nil {
+	if p.X == nil && p.Y == nil {
 		return q
 	}
-	if q.x == nil && q.y == nil {
+	if q.X == nil && q.Y == nil {
 		return p
 	}
 
-	if p.x.Cmp(q.x) == 0 && p.y.Cmp(new(big.Int).Neg(q.y)) == 0 {
+	if p.X.Cmp(q.X) == 0 && p.Y.Cmp(new(big.Int).Neg(q.Y)) == 0 {
 		return &Point{nil, nil}
 	}
 
-	if p.x.Cmp(q.x) == 0 && p.y.Cmp(q.y) == 0 {
+	if p.X.Cmp(q.X) == 0 && p.Y.Cmp(q.Y) == 0 {
 		// Point doubling
-		dX := new(big.Int).Add(new(big.Int).Mul(big.NewInt(3), new(big.Int).Mul(p.x, p.x)), curve.a)
-		dY := new(big.Int).Mul(big.NewInt(2), p.y)
+		dX := new(big.Int).Add(new(big.Int).Mul(big.NewInt(3), new(big.Int).Mul(p.X, p.X)), curve.a)
+		dY := new(big.Int).Mul(big.NewInt(2), p.Y)
 		inv := modInverse(dY, curve.p)
 		slope := new(big.Int).Mul(dX, inv)
 		slope_mod := new(big.Int).Mod(slope, curve.p)
-		rx := new(big.Int).Sub(new(big.Int).Mul(slope_mod, slope_mod), new(big.Int).Mul(big.NewInt(2), p.x))
+		rx := new(big.Int).Sub(new(big.Int).Mul(slope_mod, slope_mod), new(big.Int).Mul(big.NewInt(2), p.X))
 		rx.Mod(rx, curve.p)
-		ry := new(big.Int).Sub(new(big.Int).Mul(slope_mod, new(big.Int).Sub(p.x, rx)), p.y)
+		ry := new(big.Int).Sub(new(big.Int).Mul(slope_mod, new(big.Int).Sub(p.X, rx)), p.Y)
 		ry.Mod(ry, curve.p)
 		return &Point{rx, ry}
 	} else {
-		dX := new(big.Int).Sub(q.x, p.x)
-		dY := new(big.Int).Sub(q.y, p.y)
+		dX := new(big.Int).Sub(q.X, p.X)
+		dY := new(big.Int).Sub(q.Y, p.Y)
 		if dX.Cmp(big.NewInt(0)) == -1 {
 			dX.Neg(dX)
 			dY.Neg(dY)
 		}
 		inv := modInverse(dX, curve.p)
 		slope := new(big.Int).Mod(new(big.Int).Mul(dY, inv), curve.p)
-		rx := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, slope), new(big.Int).Add(p.x, q.x)), curve.p)
-		ry := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, new(big.Int).Sub(p.x, rx)), p.y), curve.p)
+		rx := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, slope), new(big.Int).Add(p.X, q.X)), curve.p)
+		ry := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, new(big.Int).Sub(p.X, rx)), p.Y), curve.p)
 		return &Point{rx, ry}
 	}
 }
@@ -114,22 +108,13 @@ func (curve *Curve) ScalarMult(k *big.Int, p *Point) *Point {
 
 // Generate a private key
 func GeneratePrivateKey(curve *Curve) *big.Int {
-	n := curve.n
-	d, err := rand.Int(rand.Reader, n)
+	p := curve.p
+	d, err := rand.Int(rand.Reader, p)
 	if err != nil {
 		fmt.Println(err)
 	}
 	return d
 }
-
-// func GenerateRandomBigIntBelow(limit *big.Int) (*big.Int, error) {
-// 	n, err := rand.Int(rand.Reader, limit)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return n, nil
-// }
-
 
 // Generate a public key
 func GeneratePublicKey(curve *Curve, d *big.Int) *Point {
@@ -138,7 +123,7 @@ func GeneratePublicKey(curve *Curve, d *big.Int) *Point {
 
 // ECDH: generate a shared key
 func GenerateKeyPair() (*big.Int, *Point) {
-	curve := NewSecp256k1Curve()
+	curve := NewCurve()
 	privKey := GeneratePrivateKey(curve)
 	pubKey := GeneratePublicKey(curve, privKey)
 	return privKey, pubKey
@@ -146,42 +131,8 @@ func GenerateKeyPair() (*big.Int, *Point) {
 
 // ECDH: generate a shared key
 func GenerateSharedKey(privKey *big.Int, pubKey *Point) *big.Int {
-	curve := NewSecp256k1Curve()
+	curve := NewCurve()
 	sharedKey := curve.ScalarMult(privKey, pubKey)
 	fmt.Println("Shared Key: ", sharedKey)
-	return sharedKey.x
-}
-
-func TestDoubling() {
-	gx := new(big.Int)
-	gx.SetString("4613", 16)
-
-	gy := new(big.Int)
-	gy.SetString("746B", 16)
-
-	curve := NewSecp256k1Curve()
-	p := Point{gx, gy}
-	fmt.Println("Generator: ", p.x, p.y)
-	add := curve.Add(&p, &p)
-	fmt.Println("Addition: ", add.x, add.y)
-}
-
-func TestAddition() {
-	gx := new(big.Int)
-	gx.SetString("4613", 16)
-
-	gy := new(big.Int)
-	gy.SetString("746B", 16)
-
-	fx := new(big.Int)
-	fx.SetString("1BBB", 16)
-
-	fy := new(big.Int)
-	fy.SetString("8B2A", 16)
-
-	curve := NewSecp256k1Curve()
-	p := Point{gx, gy}
-	q := Point{fx, fy}
-	add := curve.Add(&p, &q)
-	fmt.Println("Addition: ", add.x, add.y)
+	return sharedKey.X
 }
