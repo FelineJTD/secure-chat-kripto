@@ -69,6 +69,12 @@
     return [new Point(BigInt(points[0].x), BigInt(points[0].y)), new Point(BigInt(points[1].x), BigInt(points[1].y))]
   }
 
+  // Convert JSON string to point
+  function JSONToPoint(json: string): Point {
+    const point = JSON.parse(json)
+    return new Point(BigInt(point.x), BigInt(point.y))
+  }
+
   // Generate key pairs
   function generate() {
     const [priv, pub] = generateKeyPair()
@@ -94,6 +100,28 @@
     URL.revokeObjectURL(pubKeyURL)
     privKeyLink.remove()
     pubKeyLink.remove()
+  }
+
+  function setPrivKeyECC(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      privKeyECC = BigInt(reader.result as string)
+      console.log("privKeyECC", privKeyECC)
+    }
+    reader.readAsText(file)
+  }
+
+  function setPubKeyECC(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      pubKeyECC = JSONToPoint(reader.result as string)
+      console.log("pubKeyECC", pubKeyECC)
+    }
+    reader.readAsText(file)
   }
 
   onMount(() => {
@@ -137,7 +165,7 @@
 
 <main class="bg-neutral-100 h-screen">
   <div class="flex flex-col lg:flex-row w-full h-screen">
-    <KeyInputs onGenerate={generate} />
+    <KeyInputs onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} />
     <Container>
       <ChatHeader sender={id} isConnected={isConnected} />
       <ChatContainer>
