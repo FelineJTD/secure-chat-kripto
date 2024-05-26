@@ -2,8 +2,9 @@ package ecdh
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
+
+	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 )
 
 // Define the Point structure
@@ -111,7 +112,7 @@ func GeneratePrivateKey(curve *Curve) *big.Int {
 	p := curve.p
 	d, err := rand.Int(rand.Reader, p)
 	if err != nil {
-		fmt.Println(err)
+		logger.HandleError(err)
 	}
 	return d
 }
@@ -133,7 +134,7 @@ func GenerateKeyPair() (*big.Int, *Point) {
 // ECDH: generate a shared key
 func GenerateSharedKey(privKey *big.Int, pubKey *Point) *big.Int {
 	curve := NewCurve()
-	sharedKey := curve.ScalarMult(privKey, pubKey)
-	fmt.Println("Shared Key: ", sharedKey)
+	copy := new(big.Int).Set(privKey)
+	sharedKey := curve.ScalarMult(copy, pubKey)
 	return sharedKey.X
 }

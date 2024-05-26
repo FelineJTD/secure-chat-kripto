@@ -3,21 +3,22 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
-	"fmt"
 	"io"
+	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/gorilla/websocket"
 
+	"github.com/FelineJTD/secure-chat-kripto/server/ecdh"
 	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	// "github.com/FelineJTD/secure-chat-kripto/server/middlewares"
 )
-
-var addr = flag.String("addr", ":8080", "http service address")
 
 type Message struct {
 	Sender  int    `json:"sender"`
@@ -25,56 +26,20 @@ type Message struct {
 }
 
 type PublicKey struct {
+	Port string `json:"port"`
 	PublicKey string `json:"public_key"`
 }
 
-func reader(key string, conn *websocket.Conn) {
-	var err error = nil
-	defer logger.HandleError(err)
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			return
-		}
-		logger.Info("Message received from client: " + string(p))
-
-		// DO SOMETHING HERE
-		message := Message{}
-		json.Unmarshal(p, &message)
-		// this just returns the same message to client
-		msgToSend := "You said: " + string(message.Message)
-		// payload in json with structure
-		// { sender: "server", message: msgToSend }
-		payload := []byte(`{"sender":"server","message":"` + msgToSend + `"}`)
-
-		logger.Debug("Shared Key: " + key) // This is just to silence the linter
-		// TODO: Uncomment this to enable encryption, need testing
-		// payload := handlers.Encrypt(key, payload) // some json marshalled version of this
-
-		if err := conn.WriteMessage(messageType, payload); err != nil {
-			return
-		}
-	}
+type Handshake struct {
+	Port string `json:"port"`
+	PublicKey string `json:"public_key"`
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Home Page")
+	logger.Info(r.RemoteAddr)
+	w.Write([]byte("Home Page"))
 }
 
-// func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-// 	var err error = nil
-// 	defer logger.HandleError(err)
-// 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-// 	ws, err := upgrader.Upgrade(w, r, nil)
-// 	if err != nil {
-// 		return
-// 	}
-// 	logger.Info("Client Connected")
-
-// 	reader(r.RemoteAddr, ws)
-// }
-
-// TODO: Test this endpoint
 // Since the spec requested a handshake, It might be better to emulate it using a websocket, but this will do for now
 // In essence the client makes a PUT request sending its public key, the server then generates a shared key and sends back its public key
 // The client then calculates the shared key and can now send encrypted messages
@@ -88,30 +53,59 @@ func keyEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pubKey := PublicKey{}
-	json.Unmarshal(body, &pubKey)
-
-	SharedKey, err := handlers.GenerateKey(r.RemoteAddr, pubKey.PublicKey)
-
-	if err != nil {
+	msgJSON := Handshake{}
+	if err = json.Unmarshal(body, &msgJSON); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	logger.Info("Shared Key Generated: " + SharedKey) // We dont really need to send back the shared key because the client can calculate it for himself, I leave it up to your judgement
+	pubKeyClientTemp := PubKeyClient{}
 
-	key, err := handlers.GetPubKey()
-
-	if err != nil {
+	if err = json.Unmarshal([]byte(msgJSON.PublicKey), &pubKeyClientTemp); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	payload := []byte(`{"public_key": "` + key + `"}`)
+	X, ok := new(big.Int).SetString(pubKeyClientTemp.X, 10)
+	if !ok {
+		err = errors.New("error parsing X from client public key")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	w.Write(payload)
+	Y, ok := new(big.Int).SetString(pubKeyClientTemp.Y, 10)
+	if !ok {
+		err = errors.New("error parsing Y from client public key")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
-	logger.Info("Public Key Sent")
+	pubKeyClient := ecdh.Point{X: X, Y: Y}
+
+	address := strings.Split(r.RemoteAddr, ":")[0] + ":" + msgJSON.Port
+	logger.Info("Shaking Hands With: " + address)
+
+	sk, err := handlers.GenerateKey(address, &pubKeyClient)
+	if err != nil {
+		logger.HandleError(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("Generated Shared Key: " + sk)
+
+	// // Send the public key to the client as string
+	// pubKeyX := pubKey.X.String()
+	// pubKeyY := pubKey.Y.String()
+	pubKeyJSON, err := json.Marshal(PubKeyClient{X: handlers.PubKey.X.String(), Y: handlers.PubKey.Y.String()})
+	if err != nil {
+		logger.HandleError(err)
+		return
+	}
+
+	w.Write(pubKeyJSON)
+
+	logger.Info("Handshake Complete")
 }
 
 func getParams(w http.ResponseWriter, r *http.Request) {
@@ -124,26 +118,20 @@ func getParams(w http.ResponseWriter, r *http.Request) {
 func setupRoutes(hub *Hub) http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-	}))
-	r.Get("/", homePage)
-	r.Get("/chat", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
-	})
-
-	// TODO: Uncomment this to enable decryption middleware, need testing
-	r.Route("/chat", func(r chi.Router) {
-		// r.Use(middlewares.DecryptMiddleware)
-		// r.Get("/", wsEndpoint)
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			serveWs(hub, w, r)
-		})
-	})
+	r.Use(cors.AllowAll().Handler)
+	r.Use(middleware.RealIP)
 
 	r.Put("/key", keyEndpoint)
 
 	r.Get("/schnorr", getParams)
+
+	r.Get("/", homePage)
+
+	r.Route("/chat", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			serveWs(hub, w, r)
+		})
+	})
 
 	return r
 }
@@ -154,14 +142,6 @@ func main() {
 	go hub.run()
 
 	r:= setupRoutes(hub)
-	// privKey, pubKey := ecdh.GenerateKeyPair()
-	// fmt.Println("Private Key: ", *privKey)
-	// fmt.Println("Public Key: ", pubKey.X, pubKey.Y)
-	// sharedKey := ecdh.GenerateSharedKey(privKey, pubKey)
-	// fmt.Println("Shared Key: ", sharedKey)
-	// test addition
-	// ecdh.TestAddition()
-	// fmt.Println("Addition: ", res)
 
 	logger.Info("Server started at http://localhost:8080")
 	logger.HandleFatal(http.ListenAndServe(":8080", r))

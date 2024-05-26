@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"syscall/js"
 
@@ -68,6 +69,9 @@ func Sign(p, q, g, privateKey, message string) (js.Value, error) {
 		return js.ValueOf(nil), err
 	}
 
+	fmt.Println(sign)
+	fmt.Println(hash)
+
 	return js.ValueOf(map[string]interface{}{
 		"sign": hex.EncodeToString(sign),
 		"hash": hex.EncodeToString(hash),
@@ -104,6 +108,9 @@ func Verify(p, q, g, publicKey, signature, hash, message string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	fmt.Println(sign)
+	fmt.Println(hashb)
 
 	return s.Verify(pub, sign, hashb, message), nil
 }
@@ -166,6 +173,20 @@ func Decrypt(key, ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
+func Hash(hexString string) (string, error) {
+	if len(hexString) % 2 != 0 {
+		hexString = "0" + hexString
+	}
+
+	bytes, err := hex.DecodeString(hexString)
+	if err != nil {
+		return "", err
+	}
+
+	hash := sha256.Sum256(bytes)
+
+	return hex.EncodeToString(hash[:]), nil
+}
 
 func main() {
 	wasm.Expose("keys", GenSchnorrKeyPair)
@@ -173,6 +194,7 @@ func main() {
 	wasm.Expose("verify", Verify)
 	wasm.Expose("encrypt", Encrypt)
 	wasm.Expose("decrypt", Decrypt)
+	wasm.Expose("hash", Hash)
 	wasm.Ready()
 
 	select {}

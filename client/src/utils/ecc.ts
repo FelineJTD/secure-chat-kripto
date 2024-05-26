@@ -48,7 +48,7 @@ function hexToBigInt(h: string): bigint {
   return BigInt(`0x${h}`);
 }
 
-function bigIntToHex(n: bigint): string {
+export function bigIntToHex(n: bigint): string {
   return n.toString(16);
 }
 
@@ -189,7 +189,7 @@ export function encryptMessage(
   const msgRemainder = msgInt % p;
   const msgMultiple = msgInt / p;
   const msgPoint = new Point(msgRemainder, msgMultiple);
-  console.log("Message", msgPoint);
+  // console.log("Message", msgPoint);
   return encryptECC(publicKey, msgPoint);
 }
 
@@ -198,6 +198,6 @@ export function decryptMessage(
   ciphertext: [Point, Point]
 ): string {
   const decryptedMessage = decryptECC(privateKey, ciphertext);
-  console.log("Decrypted message", decryptedMessage);
+  // console.log("Decrypted message", decryptedMessage);
   return hexToString(bigIntToHex(decryptedMessage.x + decryptedMessage.y * p));
 }

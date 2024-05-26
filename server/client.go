@@ -6,14 +6,17 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
-	"log"
-	"math/big"
+	// "encoding/hex"
+	"strings"
+
+	// "encoding/json"
+
+	// "math/big"
 	"net/http"
 	"time"
 
-	"github.com/FelineJTD/secure-chat-kripto/server/ecdh"
+	// "github.com/FelineJTD/secure-chat-kripto/server/ecdh"
+	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	"github.com/gorilla/websocket"
 )
@@ -52,16 +55,11 @@ type Client struct {
 	// Buffered channel of outbound messages.
 	send chan []byte
 
-	// Port as ID
-	port string
+	// Address as ID
+	address string
 
 	// Shared key
 	sharedKey string
-}
-
-type Handshake struct {
-	Port string `json:"port"`
-	PublicKey string `json:"publickey"`
 }
 
 type PubKeyClient struct {
@@ -84,47 +82,24 @@ func (c *Client) readPump() {
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.conn.ReadMessage()
-		logger.Info("Message received from client: " + string(message))
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				logger.HandleError(err)
 			}
 			break
 		}
-		if (c.port == "") {
-			msgJSON := Handshake{}
-			json.Unmarshal(message, &msgJSON)
-			fmt.Println(msgJSON)
-			pubKeyClientTemp := PubKeyClient{}
-			json.Unmarshal([]byte(msgJSON.PublicKey), &pubKeyClientTemp)
-			xTemp := new(big.Int)
-			xTemp.SetString(pubKeyClientTemp.X, 10)
-			yTemp := new(big.Int)
-			yTemp.SetString(pubKeyClientTemp.Y, 10)
-			pubKeyClient := ecdh.Point{X: xTemp, Y: yTemp}
 
-			c.port = msgJSON.Port
-			// Generate key pair
-			privKey, pubKey := ecdh.GenerateKeyPair()
-			// Send the public key to the client as string
-			pubKeyX := pubKey.X.String()
-			pubKeyY := pubKey.Y.String()
-			pubKeyJSON, err := json.Marshal(PubKeyClient{X: pubKeyX, Y: pubKeyY})
-			if err != nil {
-				log.Println(err)
-				return
+		logger.Info("\n[" + c.address + "] => Decrypt{" + c.sharedKey + ", " + string(message) + "}")
+
+		plaintext, err := handlers.Decrypt(c.sharedKey, string(message))
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logger.HandleError(err)
 			}
-			c.send <- pubKeyJSON
-			// Calculate shared key
-			sharedKey := ecdh.GenerateSharedKey(privKey, &pubKeyClient)
-			c.sharedKey = sharedKey.String()
-			// Register the client
-			c.hub.register <- c
-		} else {
-			fmt.Println("Broadcasting message")
-			message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-			c.hub.broadcast <- message
+			break
 		}
+
+		c.hub.broadcast <- bytes.TrimSpace(bytes.Replace([]byte(plaintext), newline, space, -1))
 	}
 }
 
@@ -134,7 +109,9 @@ func (c *Client) readPump() {
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 func (c *Client) writePump() {
+	var err error = nil
 	ticker := time.NewTicker(pingPeriod)
+	defer logger.HandleError(err)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
@@ -153,7 +130,15 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+
+			logger.Info("\n[" + c.address + "] <= Encrypt{" + c.sharedKey + ", " + string(message) + "}")
+
+			encrypted, err := handlers.Encrypt(c.sharedKey, string(message))
+			if err != nil {
+				return
+			}
+
+			w.Write([]byte(encrypted))
 
 			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
@@ -179,13 +164,24 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	if err != nil {
-		log.Println(err)
+		logger.HandleError(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), port: "", sharedKey: ""}
+
+	address := strings.Split(r.RemoteAddr, ":")[0] + ":" + r.URL.Query().Get("id")
+	logger.Info("Address: " + address)
+
+	sharedKey, err := handlers.GetSharedKey(address)
+	if err != nil {
+		logger.HandleError(err)
+		return
+	}
+
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), address: address, sharedKey: sharedKey}
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+	client.hub.register <- client
 }
