@@ -48,7 +48,7 @@
     })
   }
 
-  const p = 49393n;
+  const p = 2988906795291454297820347531032493893098771766522051523183849459n;
   const a = 71479n;
   const b = 52157n;
   const Gx = 14703n;
@@ -120,15 +120,31 @@ function calculateY(x: bigint): bigint {
 // end
 // return lastx
 
-function modInverse(a: bigint, m: bigint): bigint {
-  a = ((a % m) + m) % m;
-  for (let x = 1n; x < m; x++) {
-    if ((a * x) % m === 1n) {
-      return x;
-    }
+function modInverse(aPoint: bigint, bPoint: bigint): bigint {
+  let a = aPoint;
+  let b = bPoint;
+  let x = 0n;
+  let y = 1n;
+  let lastx = 1n;
+  let lasty = 0n;
+  let temp = 0n;
+
+  while (b !== 0n) {
+    const q = a / b;
+    const r = a % b;
+    a = b;
+    b = r;
+    temp = x;
+    x = lastx - q * x;
+    lastx = temp;
+    temp = y;
+    y = lasty - q * y;
+    lasty = temp;
   }
-  return 1n;
+
+  return lastx;
 }
+
 
 // Point addition on the curve
 // Algorithm 10: The pseudocode of adding two points on a curve
@@ -157,7 +173,16 @@ function pointAddition(p1: Point, p2: Point): Point {
   } else if (p2.isInfinite()) {
     return p1;
   } else {
-    const slope = ((((p2.y - p1.y) * modInverse(p2.x - p1.x, p)) % p) + p) % p;
+    let dY = p2.y - p1.y;
+    let dX = p2.x - p1.x;
+    if (dX < 0n) {
+      dX = -dX;
+      dY = -dY;
+    }
+    const slope = (((dY * modInverse(dX, p)) % p) + p) % p;
+    // const slope2 = ((((p2.y - p1.y) * modInverse2(p2.x - p1.x, p)) % p) + p) % p;
+    // console.log("slope", slope)
+    // console.log("slope2", slope2)
     // Calculate x-coordinate
     const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
     // Calculate y-coordinate
@@ -191,10 +216,10 @@ function scalarMultiply(k: bigint, p1: Point): Point {
   let addend = p1;
   while (k > 0n) {
     if (isOdd(k)) {
-      console.log("point addition")
+      // console.log("point addition")
       result = pointAddition(result, addend);
     }
-    console.log("point doubling")
+    // console.log("point doubling")
     addend = pointDoubling(addend);
     k = k >> 1n;
   }
@@ -218,7 +243,7 @@ function scalarMultiply(k: bigint, p1: Point): Point {
 
 // Generate a random private key
 function generatePrivateKey(): bigint {
-  const hexString = Array(8)
+  const hexString = Array(60)
     .fill(0)
     .map(() => Math.round(Math.random() * 0xf).toString(16))
     .join("");
