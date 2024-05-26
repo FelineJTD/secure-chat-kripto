@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 
+	"github.com/FelineJTD/secure-chat-kripto/server/ecdh"
 	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	// "github.com/FelineJTD/secure-chat-kripto/server/middlewares"
@@ -150,6 +151,14 @@ func main() {
 	go hub.run()
 
 	r:= setupRoutes(hub)
+	// privKey, pubKey := ecdh.GenerateKeyPair()
+	// fmt.Println("Private Key: ", &privKey)
+	// fmt.Println("Public Key: ", *pubKey)
+	// sharedKey := ecdh.GenerateSharedKey(privKey, pubKey)
+	// fmt.Println("Shared Key: ", sharedKey)
+	// test addition
+	ecdh.TestDoubling()
+	// fmt.Println("Addition: ", res)
 
 	logger.Info("Server started at http://localhost:8080")
 	logger.HandleFatal(http.ListenAndServe(":8080", r))
