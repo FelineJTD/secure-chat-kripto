@@ -53,6 +53,7 @@
 
     schnorr = sch
     schnorrKeys = keys
+    console.log("Schnorr: ", schnorrKeys)
   }
 
   const signMessage = async (message: string) : Promise<Signature | null> => {
@@ -89,6 +90,7 @@
       console.log("No key")
       return Promise.reject("No key")
     }
+    console.log(key, message)
 
     if (isEncrypt) {
       return await wasm.encrypt(key, message);
@@ -204,6 +206,56 @@
     return new Point(BigInt(point.x), BigInt(point.y))
   }
 
+  let sign: boolean = false
+  function doSign(e: Event) {
+    sign = (e.target as HTMLInputElement).checked
+    console.log("Signing? ", sign)
+  }
+
+  let localSigningKey: string | null
+  function setSignKey(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      localSigningKey = reader.result as string
+      console.log("localSigningKey", localSigningKey)
+    }
+    reader.readAsText(file)
+  }
+
+  let remotePublicKey: string | null
+  function setVerifyKey(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      remotePublicKey = reader.result as string
+      console.log("remotePublicKey", remotePublicKey)
+    }
+    reader.readAsText(file)
+  }
+
+  function onGenerateSign() {
+    const privKeyBlob = new Blob([schnorrKeys.private], {type: "text/plain"})
+    const pubKeyBlob = new Blob([schnorrKeys.public], {type: "text/plain"})
+    const privKeyURL = URL.createObjectURL(privKeyBlob)
+    const pubKeyURL = URL.createObjectURL(pubKeyBlob)
+    const privKeyLink = document.createElement("a")
+    const pubKeyLink = document.createElement("a")
+    privKeyLink.href = privKeyURL
+    privKeyLink.download = ".schprv"
+    pubKeyLink.href = pubKeyURL
+    pubKeyLink.download = ".schpub"
+    privKeyLink.click()
+    pubKeyLink.click()
+    URL.revokeObjectURL(privKeyURL)
+    URL.revokeObjectURL(pubKeyURL)
+    privKeyLink.remove()
+    pubKeyLink.remove()
+
+  }
+
   // Generate key pairs
   function generate() {
     const [priv, pub] = generateKeyPair()
@@ -269,7 +321,10 @@
     // console.log("privKey", privKey)
     // console.log("pubKey", pubKey)
 
-    setupSchnorr()
+    setupSchnorr().then(() => {
+      localSigningKey = schnorrKeys?.private
+      console.log("Local Signing Key: ", localSigningKey)
+    })
 
     // doECDH()
 
@@ -313,7 +368,7 @@
 
 <main class="bg-neutral-100 h-screen">
   <div class="flex flex-col lg:flex-row w-full h-screen">
-    <KeyInputs onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} status={status} />
+    <KeyInputs doSign={doSign} setSignKey={setSignKey} setVerifyKey={setVerifyKey} onGenerateSign={onGenerateSign} onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} status={status} />
     <Container>
       <ChatHeader sender={id} isConnected={isConnected} />
       <ChatContainer>
