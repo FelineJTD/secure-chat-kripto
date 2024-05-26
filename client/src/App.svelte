@@ -271,7 +271,7 @@
 
     setupSchnorr()
 
-    doECDH()
+    // doECDH()
 
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
