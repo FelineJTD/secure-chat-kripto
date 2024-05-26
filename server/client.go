@@ -6,10 +6,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
+	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/FelineJTD/secure-chat-kripto/server/ecdh"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	"github.com/gorilla/websocket"
 )
@@ -47,6 +51,22 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	// Port as ID
+	port string
+
+	// Shared key
+	sharedKey string
+}
+
+type Handshake struct {
+	Port string `json:"port"`
+	PublicKey string `json:"publickey"`
+}
+
+type PubKeyClient struct {
+	X string `json:"x"`
+	Y string `json:"y"`
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -71,8 +91,43 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		if (c.port == "") {
+			msgJSON := Handshake{}
+			json.Unmarshal(message, &msgJSON)
+			fmt.Println(msgJSON)
+			pubKeyClientTemp := PubKeyClient{}
+			json.Unmarshal([]byte(msgJSON.PublicKey), &pubKeyClientTemp)
+			xTemp := new(big.Int)
+			xTemp.SetString(pubKeyClientTemp.X, 10)
+			yTemp := new(big.Int)
+			yTemp.SetString(pubKeyClientTemp.Y, 10)
+			pubKeyClient := ecdh.Point{X: xTemp, Y: yTemp}
+			fmt.Println("pub key client parsed", pubKeyClient.X, pubKeyClient.Y)
+
+			c.port = msgJSON.Port
+			// Generate key pair
+			privateKeyTemp := ecdh.GeneratePrivateKey()
+			fmt.Println("Private Keyyyyyyyyyyyyyyy TEMP: ", privateKeyTemp)
+			privKey, pubKey := ecdh.GenerateKeyPair()
+			fmt.Println("Private Keyyyyyyyyyyyyyyy: ", privKey)
+			fmt.Println("Public Key: ", pubKey)
+			// Send the public key to the client
+			pubKeyJSON, err := json.Marshal(pubKey)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			c.send <- pubKeyJSON
+			// Calculate shared key
+			sharedKey := ecdh.GenerateSharedKey(privKey, &pubKeyClient)
+			c.sharedKey = sharedKey.String()
+			// Register the client
+			c.hub.register <- c
+		} else {
+			fmt.Println("Broadcasting message")
+			message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+			c.hub.broadcast <- message
+		}
 	}
 }
 
@@ -130,8 +185,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), port: "", sharedKey: ""}
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
