@@ -22,6 +22,7 @@
   let socket: WebSocket
   let isConnected = false
 
+  let status: string
   let error: string
 
   // Connect to WebSocket server
@@ -100,6 +101,8 @@
     URL.revokeObjectURL(pubKeyURL)
     privKeyLink.remove()
     pubKeyLink.remove()
+
+    status = "Keys generated and downloaded successfully. Please give your public key to your partner."
   }
 
   function setPrivKeyECC(e: Event) {
@@ -165,7 +168,7 @@
 
 <main class="bg-neutral-100 h-screen">
   <div class="flex flex-col lg:flex-row w-full h-screen">
-    <KeyInputs onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} />
+    <KeyInputs onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} status={status} />
     <Container>
       <ChatHeader sender={id} isConnected={isConnected} />
       <ChatContainer>
