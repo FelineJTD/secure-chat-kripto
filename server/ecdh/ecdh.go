@@ -64,7 +64,6 @@ func (curve *Curve) Add(p, q *Point) *Point {
 		return &Point{nil, nil}
 	}
 
-	lambda := new(big.Int)
 	if p.x.Cmp(q.x) == 0 && p.y.Cmp(q.y) == 0 {
 		// Point doubling
 		dX := new(big.Int).Add(new(big.Int).Mul(big.NewInt(3), new(big.Int).Mul(p.x, p.x)), curve.a)
@@ -78,21 +77,18 @@ func (curve *Curve) Add(p, q *Point) *Point {
 		ry.Mod(ry, curve.p)
 		return &Point{rx, ry}
 	} else {
-		// Point addition
-		num := new(big.Int).Sub(q.y, p.y)
-		den := new(big.Int).Sub(q.x, p.x)
-		lambda.Mul(num, modInverse(den, curve.p))
-		lambda.Mod(lambda, curve.p)
+		dX := new(big.Int).Sub(q.x, p.x)
+		dY := new(big.Int).Sub(q.y, p.y)
+		if dX.Cmp(big.NewInt(0)) == -1 {
+			dX.Neg(dX)
+			dY.Neg(dY)
+		}
+		inv := modInverse(dX, curve.p)
+		slope := new(big.Int).Mod(new(big.Int).Mul(dY, inv), curve.p)
+		rx := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, slope), new(big.Int).Add(p.x, q.x)), curve.p)
+		ry := new(big.Int).Mod(new(big.Int).Sub(new(big.Int).Mul(slope, new(big.Int).Sub(p.x, rx)), p.y), curve.p)
+		return &Point{rx, ry}
 	}
-
-	rx := new(big.Int).Sub(new(big.Int).Mul(lambda, lambda), p.x)
-	rx.Sub(rx, q.x)
-	rx.Mod(rx, curve.p)
-
-	ry := new(big.Int).Sub(new(big.Int).Mul(lambda, new(big.Int).Sub(p.x, rx)), p.y)
-	ry.Mod(ry, curve.p)
-
-	return &Point{rx, ry}
 }
 
 // Point doubling: R = 2P
@@ -167,5 +163,25 @@ func TestDoubling() {
 	p := Point{gx, gy}
 	fmt.Println("Generator: ", p.x, p.y)
 	add := curve.Add(&p, &p)
+	fmt.Println("Addition: ", add.x, add.y)
+}
+
+func TestAddition() {
+	gx := new(big.Int)
+	gx.SetString("4613", 16)
+
+	gy := new(big.Int)
+	gy.SetString("746B", 16)
+
+	fx := new(big.Int)
+	fx.SetString("1BBB", 16)
+
+	fy := new(big.Int)
+	fy.SetString("8B2A", 16)
+
+	curve := NewSecp256k1Curve()
+	p := Point{gx, gy}
+	q := Point{fx, fy}
+	add := curve.Add(&p, &q)
 	fmt.Println("Addition: ", add.x, add.y)
 }

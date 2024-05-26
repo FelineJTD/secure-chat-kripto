@@ -98,13 +98,16 @@ function pointAddition(p1: Point, p2: Point): Point {
   } else if (p2.isInfinite()) {
     return p1;
   } else {
-    let dY = p2.y - p1.y;
     let dX = p2.x - p1.x;
+    let dY = p2.y - p1.y;
     if (dX < 0n) {
       dX = -dX;
       dY = -dY;
     }
+    console.log("dX", dX);
+    console.log("dY", dY);
     const slope = (((dY * modInverse(dX, p)) % p) + p) % p;
+    console.log("Slope", slope);
     // Calculate x-coordinate
     const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
     // Calculate y-coordinate
@@ -118,7 +121,6 @@ function pointDoubling(p1: Point): Point {
   // Calculate slope
   const slope =
     ((((3n * p1.x * p1.x + a) * modInverse(2n * p1.y, p)) % p) + p) % p;
-  console.log("Slope", slope);
   // Calculate x-coordinate
   const x = (((slope * slope - 2n * p1.x) % p) + p) % p;
   // Calculate y-coordinate
@@ -128,7 +130,9 @@ function pointDoubling(p1: Point): Point {
 
 export function testPointDoubling() {
   const p = new Point(Gx, Gy);
-  console.log("Point doubling", pointDoubling(p));
+  const q = pointDoubling(p);
+  console.log("Point doubling", q);
+  console.log("Point doubling", pointAddition(p, q));
 }
 
 function isOdd(n: bigint) {

@@ -157,7 +157,7 @@ func main() {
 	// sharedKey := ecdh.GenerateSharedKey(privKey, pubKey)
 	// fmt.Println("Shared Key: ", sharedKey)
 	// test addition
-	ecdh.TestDoubling()
+	ecdh.TestAddition()
 	// fmt.Println("Addition: ", res)
 
 	logger.Info("Server started at http://localhost:8080")
