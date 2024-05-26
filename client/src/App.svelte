@@ -121,7 +121,3 @@
     <div class="w-0 lg:w-1/3" />
   </div>
 </main>
-
-<style>
-
-</style>

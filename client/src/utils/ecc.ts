@@ -1,5 +1,6 @@
 // ecc.ts
 
+// Parameters for the curve
 const p =
   9391992014528224411648387829887779452968700080555255747361254716652003361688800380330385633056245683444877536960503368327139028742945338465232435742415490790285260907481871880469373580741241260948876883488819453317735629504379161346245998683504143286421351n;
 const a =
@@ -132,17 +133,14 @@ function scalarMultiply(k: bigint, p1: Point): Point {
   let addend = p1;
   while (k > 0n) {
     if (isOdd(k)) {
-      // console.log("point addition")
       result = pointAddition(result, addend);
     }
-    // console.log("point doubling")
     addend = pointDoubling(addend);
     k = k >> 1n;
   }
   return result;
 }
 
-// Generate a random private key
 function generatePrivateKey(): bigint {
   const hexString = Array(250)
     .fill(0)
@@ -153,7 +151,6 @@ function generatePrivateKey(): bigint {
   return randomInt;
 }
 
-// Generate the corresponding public key
 function generatePublicKey(privateKey: bigint): Point {
   return scalarMultiply(privateKey, new Point(Gx, Gy));
 }
@@ -164,30 +161,17 @@ export function generateKeyPair(): [bigint, Point] {
   return [privateKey, publicKey];
 }
 
-// Encrypt a message using ECC
 function encryptECC(publicKey: Point, message: Point): [Point, Point] {
-  // const dummy = new Point(24601n, 33894n);
   const k = generatePrivateKey();
-  // a = g^k mod p
   const a = scalarMultiply(k, new Point(Gx, Gy));
-  // b = m*P^k mod p
-  // const m = BigInt(message);
-  // console.log("m", dummy)
   const b = pointAddition(scalarMultiply(k, publicKey), message);
-
   return [a, b];
 }
 
-// Decrypt a message using ECC
 function decryptECC(privateKey: bigint, ciphertext: [Point, Point]): Point {
-  // const [a, b, message] = ciphertext.split(",");
-  // const aPoint = new Point(BigInt(a), BigInt(b));
   const [a, b] = ciphertext;
   const m = pointAddition(b, scalarMultiply(privateKey, a).convertToMinus());
   return m;
-
-  // const m = pointAddition(aPoint, scalarMultiply(privateKey, aPoint));
-  // return m.x.toString();
 }
 
 export function encryptMessage(
@@ -197,7 +181,6 @@ export function encryptMessage(
   const msgInt = hexToBigInt(stringToHex(message));
   const msgRemainder = msgInt % p;
   const msgMultiple = msgInt / p;
-  // console.log(msgInt === msgRemainder + (msgMultiple * p))
   const msgPoint = new Point(msgRemainder, msgMultiple);
   console.log("Message", msgPoint);
   return encryptECC(publicKey, msgPoint);
@@ -210,19 +193,4 @@ export function decryptMessage(
   const decryptedMessage = decryptECC(privateKey, ciphertext);
   console.log("Decrypted message", decryptedMessage);
   return hexToString(bigIntToHex(decryptedMessage.x + decryptedMessage.y * p));
-}
-
-export function pointsToJSON(point: [Point, Point]): string {
-  return JSON.stringify([
-    { x: point[0].x.toString(), y: point[0].y.toString() },
-    { x: point[1].x.toString(), y: point[1].y.toString() }
-  ]);
-}
-
-export function JSONToPoints(json: string): [Point, Point] {
-  const points = JSON.parse(json);
-  return [
-    new Point(BigInt(points[0].x), BigInt(points[0].y)),
-    new Point(BigInt(points[1].x), BigInt(points[1].y))
-  ];
 }
