@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -112,6 +113,13 @@ func keyEndpoint(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Public Key Sent")
 }
 
+func getParams(w http.ResponseWriter, r *http.Request) {
+	p, q, gen := handlers.GetSchnorr()
+
+	payload := []byte(`{"p": "` + hex.EncodeToString(p) + `", "q": "` + hex.EncodeToString(q) + `", "gen": "` + hex.EncodeToString(gen) + `"}`)
+	w.Write(payload)
+}
+
 func setupRoutes(hub *Hub) http.Handler {
 	r := chi.NewRouter()
 
@@ -130,6 +138,8 @@ func setupRoutes(hub *Hub) http.Handler {
 	})
 
 	r.Put("/key", keyEndpoint)
+
+	r.Get("/schnorr", getParams)
 
 	return r
 }

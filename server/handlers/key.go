@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
@@ -8,6 +9,7 @@ import (
 	"crypto/ecdh" // TODO: implement own ECDH
 	// "crypto/aes" // TODO: replace with GoBlockC
 	"github.com/nart4hire/goblockc"
+	"github.com/nart4hire/goschnorr"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -17,6 +19,7 @@ import (
 
 var (
 	PrivKey *ecdh.PrivateKey
+	Schnorr schnorr.Schnorr
 )
 
 func init() {
@@ -25,6 +28,12 @@ func init() {
 		logger.HandleFatal(err) // Fatal, because always needed
 	} else {
 		PrivKey = priv
+	}
+
+	if schnorr, err := schnorr.NewSchnorr(rand.Reader, sha256.New()); err != nil {
+		logger.HandleFatal(err) // Fatal, because always needed
+	} else {
+		Schnorr = schnorr
 	}
 }
 
@@ -154,4 +163,10 @@ func Decrypt(key string, ciphertext []byte) (string, error) {
     ctr.XORKeyStream(plaintext, plaintext)
 
 	return string(plaintext), nil
+}
+
+func GetSchnorr() ([]byte, []byte, []byte) {
+	p, q, gen := Schnorr.GetParams()
+
+	return p.Bytes(), q.Bytes(), gen.Bytes()
 }
