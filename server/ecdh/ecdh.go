@@ -125,14 +125,13 @@ func GeneratePublicKey(curve *Curve, d *big.Int) *Point {
 func GenerateKeyPair() (*big.Int, *Point) {
 	curve := NewCurve()
 	privKey := GeneratePrivateKey(curve)
-	pubKey := GeneratePublicKey(curve, privKey)
+	privKeyDuplicate := new(big.Int).Set(privKey)
+	pubKey := GeneratePublicKey(curve, privKeyDuplicate)
 	return privKey, pubKey
 }
 
 // ECDH: generate a shared key
 func GenerateSharedKey(privKey *big.Int, pubKey *Point) *big.Int {
-	fmt.Println("Private Key: ", privKey)
-	fmt.Println("Pub Key: ", pubKey.X, pubKey.Y)
 	curve := NewCurve()
 	sharedKey := curve.ScalarMult(privKey, pubKey)
 	fmt.Println("Shared Key: ", sharedKey)

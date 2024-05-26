@@ -6,7 +6,7 @@
   import Container from "./lib/Container.svelte";
   import KeyInputs from "./lib/KeyInputs.svelte";
   import { onMount } from "svelte";
-  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, Point } from "./utils/ecc";
+  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, generatePublicKey, Point, scalarMultiply } from "./utils/ecc";
 
   type Message = {
     sender: string
@@ -37,6 +37,7 @@
       if (!privKeyECDH || !pubKeyECDH) {
         const keyPair = generateKeyPair()
         privKeyECDH = keyPair[0]
+        console.log("privKeyECDH", privKeyECDH)
         pubKeyECDH = keyPair[1]
         // Send public key to server
         socket.send(JSON.stringify({
@@ -51,8 +52,7 @@
       console.log("Message from server ", event.data)
       if (!sharedKeyECDH) {
         try {
-          console.log("Received public key ", event.data)
-          const pubKey = new Point(BigInt(JSON.parse(event.data).X), BigInt(JSON.parse(event.data).Y))
+          const pubKey = new Point(BigInt(JSON.parse(event.data).x), BigInt(JSON.parse(event.data).y))
           sharedKeyECDH = deriveSharedSecret(privKeyECDH as bigint, pubKey)
           // Set local shared key
           localStorage.setItem("sharedKeyECDH", pointToJSON(sharedKeyECDH))
@@ -178,6 +178,14 @@
     }
   })
 
+  const testing = (e: Event) => {
+    if (!e.target) return
+    console.log((e.target as HTMLInputElement).value)
+
+    const privKeyyy = BigInt((e.target as HTMLInputElement).value)
+    console.log("shared Key 2", deriveSharedSecret(privKeyECDH as bigint, pubKeyECDH as Point))
+  }
+
   const onSend = (message: string) => {
     if (!pubKeyECC) {
       error = "Please provide keys."
@@ -211,6 +219,7 @@
       {#if error}
         <p class="text-red">{error}</p>
       {/if}
+      <input type="text" on:change={testing} />
     </div>
   </div>
 </main>

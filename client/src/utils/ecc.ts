@@ -128,7 +128,7 @@ function isOdd(n: bigint) {
 }
 
 // Scalar multiplication on the curve
-function scalarMultiply(k: bigint, p1: Point): Point {
+export function scalarMultiply(k: bigint, p1: Point): Point {
   let result = new Point(0n, 0n);
   let addend = p1;
   while (k > 0n) {
@@ -151,7 +151,7 @@ function generatePrivateKey(): bigint {
   return randomInt;
 }
 
-function generatePublicKey(privateKey: bigint): Point {
+export function generatePublicKey(privateKey: bigint): Point {
   return scalarMultiply(privateKey, new Point(Gx, Gy));
 }
 

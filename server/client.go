@@ -102,17 +102,14 @@ func (c *Client) readPump() {
 			yTemp := new(big.Int)
 			yTemp.SetString(pubKeyClientTemp.Y, 10)
 			pubKeyClient := ecdh.Point{X: xTemp, Y: yTemp}
-			fmt.Println("pub key client parsed", pubKeyClient.X, pubKeyClient.Y)
 
 			c.port = msgJSON.Port
 			// Generate key pair
-			privateKeyTemp := ecdh.GeneratePrivateKey()
-			fmt.Println("Private Keyyyyyyyyyyyyyyy TEMP: ", privateKeyTemp)
 			privKey, pubKey := ecdh.GenerateKeyPair()
-			fmt.Println("Private Keyyyyyyyyyyyyyyy: ", privKey)
-			fmt.Println("Public Key: ", pubKey)
-			// Send the public key to the client
-			pubKeyJSON, err := json.Marshal(pubKey)
+			// Send the public key to the client as string
+			pubKeyX := pubKey.X.String()
+			pubKeyY := pubKey.Y.String()
+			pubKeyJSON, err := json.Marshal(PubKeyClient{X: pubKeyX, Y: pubKeyY})
 			if err != nil {
 				log.Println(err)
 				return
