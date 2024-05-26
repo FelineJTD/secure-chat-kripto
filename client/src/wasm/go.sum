@@ -1,0 +1,6 @@
+github.com/nart4hire/goblockc v0.1.1 h1:9mZDrI41jmecpksVzgH71jTAsdGF/NEvZPoEe4fHB0I=
+github.com/nart4hire/goblockc v0.1.1/go.mod h1:xXd8Uv85BQXPheg6bj80Z6FYMuQoPxS0N/N2cHsObkc=
+github.com/nart4hire/goschnorr v0.1.0 h1:2yJLWwGljSqRWAL5EFrbKqjXNvW9Ksahqoeoj/8pl7g=
+github.com/nart4hire/goschnorr v0.1.0/go.mod h1:cIw9jBfBUflQyc2hmWiRdB5VH9dIf3w4tWM2cZjuoW8=
+github.com/teamortix/golang-wasm/wasm v0.0.0-20230719150929-5d000994c833 h1:PE/ebx5HZAsK42Bs/syRaSWBInfZpj9RifI/sEhGHvo=
+github.com/teamortix/golang-wasm/wasm v0.0.0-20230719150929-5d000994c833/go.mod h1:nskvTyoGIaAsC+664SkRitVI1ft6dm1xerCr50YZsnY=

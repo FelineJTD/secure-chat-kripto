@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"crypto/sha256"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 
 	"crypto/ecdh" // TODO: implement own ECDH
@@ -122,13 +123,18 @@ func GetSharedKey(address string) (string, error) {
 }
 
 func Encrypt(key string, plaintext []byte) (string, error) {
-	gbc, err := goblockc.NewBlock([]byte(key)[:16])
-
+	k, err := hex.DecodeString(key)
 	if err != nil {
 		return "", err
 	}
 
+	gbc, err := goblockc.NewBlock(k[:16])
+
 	iv := make([]byte, gbc.BlockSize())
+
+	if err != nil {
+		return "", err
+	}
 
     ctr, err := goblockc.NewCTR(gbc, iv)
 
@@ -144,7 +150,12 @@ func Encrypt(key string, plaintext []byte) (string, error) {
 }
 
 func Decrypt(key string, ciphertext []byte) (string, error) {
-	gbc, err := goblockc.NewBlock([]byte(key)[:16])
+	k, err := hex.DecodeString(key)
+	if err != nil {
+		return "", err
+	}
+
+	gbc, err := goblockc.NewBlock(k[:16])
 
 	if err != nil {
 		return "", err

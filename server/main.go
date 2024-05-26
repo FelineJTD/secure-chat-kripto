@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/gorilla/websocket"
 
 	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
@@ -123,6 +124,9 @@ func getParams(w http.ResponseWriter, r *http.Request) {
 func setupRoutes(hub *Hub) http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+	}))
 	r.Get("/", homePage)
 	r.Get("/chat", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)

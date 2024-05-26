@@ -100,10 +100,10 @@ function pointAddition(p1: Point, p2: Point): Point {
       dX = -dX;
       dY = -dY;
     }
-    console.log("dX", dX);
-    console.log("dY", dY);
+    // console.log("dX", dX);
+    // console.log("dY", dY);
     const slope = (((dY * modInverse(dX, p)) % p) + p) % p;
-    console.log("Slope", slope);
+    // console.log("Slope", slope);
     // Calculate x-coordinate
     const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
     // Calculate y-coordinate
