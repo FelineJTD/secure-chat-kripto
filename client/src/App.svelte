@@ -22,6 +22,8 @@
   let socket: WebSocket
   let isConnected = false
 
+  let error: string
+
   // Connect to WebSocket server
   const connectWS = () => {
     socket = new WebSocket("ws://localhost:8080/chat")
@@ -51,6 +53,11 @@
     })
   }
 
+  // Convert point to JSON string
+  function pointToJSON(point: Point): string {
+    return JSON.stringify({x: point.x.toString(), y: point.y.toString()})
+  }
+
   // Convert points to JSON string
   function pointsToJSON(point: [Point, Point]): string {
     return JSON.stringify([{x: point[0].x.toString(), y: point[0].y.toString()}, {x: point[1].x.toString(), y: point[1].y.toString()}])
@@ -66,7 +73,27 @@
   function generate() {
     const [priv, pub] = generateKeyPair()
     privKeyECC = priv
-    pubKeyECC = pub
+    // pubKeyECC = pub
+
+    // download keys
+    const privKey = priv.toString()
+    const pubKey = pointToJSON(pub)
+    const privKeyBlob = new Blob([privKey], {type: "text/plain"})
+    const pubKeyBlob = new Blob([pubKey], {type: "text/plain"})
+    const privKeyURL = URL.createObjectURL(privKeyBlob)
+    const pubKeyURL = URL.createObjectURL(pubKeyBlob)
+    const privKeyLink = document.createElement("a")
+    const pubKeyLink = document.createElement("a")
+    privKeyLink.href = privKeyURL
+    privKeyLink.download = ".ecprv"
+    pubKeyLink.href = pubKeyURL
+    pubKeyLink.download = ".ecpub"
+    privKeyLink.click()
+    pubKeyLink.click()
+    URL.revokeObjectURL(privKeyURL)
+    URL.revokeObjectURL(pubKeyURL)
+    privKeyLink.remove()
+    pubKeyLink.remove()
   }
 
   onMount(() => {
@@ -93,7 +120,10 @@
   })
 
   const onSend = (message: string) => {
-    if (!pubKeyECC) return
+    if (!pubKeyECC) {
+      error = "Please provide keys."
+      return
+    }
 
     const payload = {
       sender: id,
@@ -118,6 +148,10 @@
       </ChatContainer>
       <ChatInput onSend={onSend} />
     </Container>
-    <div class="w-0 lg:w-1/3" />
+    <div class="w-0 lg:w-1/3">
+      {#if error}
+        <p class="text-red">{error}</p>
+      {/if}
+    </div>
   </div>
 </main>
