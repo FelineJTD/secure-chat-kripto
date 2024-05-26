@@ -48,13 +48,11 @@
     })
   }
 
-  const p = 6564449n;
+  const p = 49393n;
   const a = 71479n;
   const b = 52157n;
   const Gx = 14703n;
   const Gy = 38268n;
-// const n =
-//   115792089210356248762697446949407573529996955224135760342422259061068512044369n;
 
 // Define a point class to represent points on the curve
 export class Point {
@@ -104,6 +102,24 @@ function calculateY(x: bigint): bigint {
   return (((x * x * x + a * x + b) % p) + p) % p;
 }
 
+// Input: a, b
+// Output: multiplicative inverse of a
+// 1 x = 0 y=1 lastx = 1 lasty = 0;
+// 2 temp = 0 temp2 = a temp1 = b;
+// 3 while b != 0 do
+// 4 q = a/b;
+// 5 r = a%b;
+// 6 a = b;
+// 7 b = r;
+// 8 temp = x;
+// 9 x = lastx - q * x;
+// 10 lastx = temp;
+// 11 temp = y;
+// 12 y = lasty - q*y;
+// 13 lasty = temp;
+// end
+// return lastx
+
 function modInverse(a: bigint, m: bigint): bigint {
   a = ((a % m) + m) % m;
   for (let x = 1n; x < m; x++) {
@@ -115,6 +131,22 @@ function modInverse(a: bigint, m: bigint): bigint {
 }
 
 // Point addition on the curve
+// Algorithm 10: The pseudocode of adding two points on a curve
+// Input: p1, p2
+// Output: result
+// 1 if p1 = p2 then
+// 2 return double p1;
+// end
+// 3 dY = p2.y - p1.y;
+// 4 dX = p2.x -p1.x;
+// 5 if dX is negative then
+// 6 flip signs of dX and xY;
+// end
+// 7 dX = gcdExtended(dX, p);
+// 8 slope = dY*dX%p;
+// 9 result.x = (slope.pow(2, p) - p1.x - p2.x) % p;
+// 10 result.y = slope * (p1.x - result.x) - p1.y;
+// 11 return result;
 function pointAddition(p1: Point, p2: Point): Point {
   if (p1.equals(p2)) {
     return pointDoubling(p1);
@@ -125,7 +157,6 @@ function pointAddition(p1: Point, p2: Point): Point {
   } else if (p2.isInfinite()) {
     return p1;
   } else {
-    // Calculate slope
     const slope = ((((p2.y - p1.y) * modInverse(p2.x - p1.x, p)) % p) + p) % p;
     // Calculate x-coordinate
     const x = (((slope * slope - p1.x - p2.x) % p) + p) % p;
@@ -146,14 +177,12 @@ function pointDoubling(p1: Point): Point {
   return new Point(x, y);
 }
 
-function isOdd(n: bigint)
-{
- 
-    // n^1 is n+1, then even, else odd
-    if ((n ^ 1n) == (n + 1n))
-        return false;
-    else
-        return true;
+function isOdd(n: bigint) {
+  // n^1 is n+1, then even, else odd
+  if ((n ^ 1n) == (n + 1n))
+    return false;
+  else
+    return true;
 }
 
 // Scalar multiplication on the curve
@@ -162,8 +191,10 @@ function scalarMultiply(k: bigint, p1: Point): Point {
   let addend = p1;
   while (k > 0n) {
     if (isOdd(k)) {
+      console.log("point addition")
       result = pointAddition(result, addend);
     }
+    console.log("point doubling")
     addend = pointDoubling(addend);
     k = k >> 1n;
   }
@@ -187,7 +218,7 @@ function scalarMultiply(k: bigint, p1: Point): Point {
 
 // Generate a random private key
 function generatePrivateKey(): bigint {
-  const hexString = Array(4)
+  const hexString = Array(8)
     .fill(0)
     .map(() => Math.round(Math.random() * 0xf).toString(16))
     .join("");
@@ -254,30 +285,37 @@ function JSONToPoints(json: string): [Point, Point] {
   return [new Point(BigInt(points[0].x), BigInt(points[0].y)), new Point(BigInt(points[1].x), BigInt(points[1].y))]
 }
 
+function generateKeyPairs() {
+  privKey = generatePrivateKey()
+  pubKey = generatePublicKey(privKey)
+  console.log("privKey", privKey)
+  console.log("pubKey", pubKey)
+}
+
 
   onMount(() => {
     // // Try to get private key from local storage
-    privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
-    pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
-    if (!privKey || !pubKey) {
-      // If private key is not found, generate a new one
-      privKey = generatePrivateKey()
-      pubKey = generatePublicKey(privKey)
-      localStorage.setItem("privKey", privKey.toString())
-      // localStorage.setItem("pubKey", JSON.stringify(pubKey))
-    } 
-    console.log("privKey", privKey)
-    console.log("pubKey", pubKey)
+    // privKey = localStorage.getItem("privKey") ? BigInt(localStorage.getItem("privKey") as string) : null
+    // pubKey = localStorage.getItem("pubKey") ? JSON.parse(localStorage.getItem("pubKey") as string) : null
+    // if (!privKey || !pubKey) {
+    //   // If private key is not found, generate a new one
+    //   privKey = generatePrivateKey()
+    //   pubKey = generatePublicKey(privKey)
+    //   localStorage.setItem("privKey", privKey.toString())
+    //   // localStorage.setItem("pubKey", JSON.stringify(pubKey))
+    // } 
+    // console.log("privKey", privKey)
+    // console.log("pubKey", pubKey)
 
-    const message = "   a"
-    const msgInt = hexToBigInt(stringToHex(message))
-    console.log("Message", msgInt)
-    const back = hexToString(bigIntToHex(msgInt))
-    console.log("Back", back)
-    const encryptedMessage = encryptMessage(pubKey, message)
-    console.log("Encrypted message", encryptedMessage)
-    const decryptedMessage = decryptMessage(privKey, encryptedMessage)
-    console.log("Decrypted message", decryptedMessage)
+    // const message = "   a"
+    // const msgInt = hexToBigInt(stringToHex(message))
+    // console.log("Message", msgInt)
+    // const back = hexToString(bigIntToHex(msgInt))
+    // console.log("Back", back)
+    // const encryptedMessage = encryptMessage(pubKey, message)
+    // console.log("Encrypted message", encryptedMessage)
+    // const decryptedMessage = decryptMessage(privKey, encryptedMessage)
+    // console.log("Decrypted message", decryptedMessage)
 
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
@@ -303,7 +341,7 @@ function JSONToPoints(json: string): [Point, Point] {
 
 <main class="bg-neutral-100 h-screen">
   <div class="flex flex-col lg:flex-row w-full h-screen">
-    <KeyInputs />
+    <KeyInputs onGenerate={generateKeyPairs} />
     <Container>
       <ChatHeader sender={id} isConnected={isConnected} />
       <ChatContainer>
