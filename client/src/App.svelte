@@ -6,7 +6,7 @@
   import Container from "./lib/Container.svelte";
   import KeyInputs from "./lib/KeyInputs.svelte";
   import { onMount } from "svelte";
-  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, Point, testPointDoubling } from "./utils/ecc";
+  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, Point } from "./utils/ecc";
 
   type Message = {
     sender: string
@@ -161,8 +161,6 @@
     // } 
     // console.log("privKey", privKey)
     // console.log("pubKey", pubKey)
-    console.log(testPointDoubling())
-
     const url = window.location.href
     id = url.split(":")[2].split("/")[0]
     connectWS()

@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 
-	"github.com/FelineJTD/secure-chat-kripto/server/ecdh"
 	"github.com/FelineJTD/secure-chat-kripto/server/handlers"
 	"github.com/FelineJTD/secure-chat-kripto/server/logger"
 	// "github.com/FelineJTD/secure-chat-kripto/server/middlewares"
@@ -151,9 +150,9 @@ func main() {
 	go hub.run()
 
 	r:= setupRoutes(hub)
-	privKey, pubKey := ecdh.GenerateKeyPair()
-	fmt.Println("Private Key: ", *privKey)
-	fmt.Println("Public Key: ", pubKey.X, pubKey.Y)
+	// privKey, pubKey := ecdh.GenerateKeyPair()
+	// fmt.Println("Private Key: ", *privKey)
+	// fmt.Println("Public Key: ", pubKey.X, pubKey.Y)
 	// sharedKey := ecdh.GenerateSharedKey(privKey, pubKey)
 	// fmt.Println("Shared Key: ", sharedKey)
 	// test addition
