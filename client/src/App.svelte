@@ -6,7 +6,7 @@
   import Container from "./lib/Container.svelte";
   import KeyInputs from "./lib/KeyInputs.svelte";
   import { onMount } from "svelte";
-  import { decryptMessage, encryptMessage, generateKeyPair, Point } from "./utils/ecc";
+  import { decryptMessage, deriveSharedSecret, encryptMessage, generateKeyPair, Point } from "./utils/ecc";
 
   type Message = {
     sender: string
@@ -15,6 +15,10 @@
 
   let messages: Message[] = []
   let id: string
+
+  let privKeyECDH: bigint | null
+  let pubKeyECDH: Point | null
+  let sharedKeyECDH: Point | null
 
   let privKeyECC: bigint | null
   let pubKeyECC: Point | null
@@ -30,16 +34,33 @@
     socket = new WebSocket("ws://localhost:8080/chat")
     socket.addEventListener("open", ()=> {
       console.log("Opened")
+      if (!privKeyECDH || !pubKeyECDH) {
+        const keyPair = generateKeyPair()
+        privKeyECDH = keyPair[0]
+        pubKeyECDH = keyPair[1]
+        // Send public key to server
+        socket.send(pointToJSON(pubKeyECDH))
+      }
       isConnected = true
     })
     socket.addEventListener("message", (event) => {
       console.log("Message from server ", event.data)
-      const payload = JSON.parse(event.data)
-      const message = {
-        sender: payload.sender,
-        message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
+      if (!sharedKeyECDH) {
+        try {
+          const pubKey = JSONToPoint(event.data)
+          sharedKeyECDH = deriveSharedSecret(privKeyECDH as bigint, pubKey)
+          console.log("sharedKeyECDH", sharedKeyECDH)
+        } catch (err) {
+          console.log("Error ", err)
+        }
+      } else {
+        const payload = JSON.parse(event.data)
+        const message = {
+          sender: payload.sender,
+          message: decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
+        }
+        messages = [message, ...messages]
       }
-      messages = [message, ...messages]
     })
     socket.addEventListener("close", () => {
       console.log("Closed")

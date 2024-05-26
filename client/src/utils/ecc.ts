@@ -161,6 +161,13 @@ export function generateKeyPair(): [bigint, Point] {
   return [privateKey, publicKey];
 }
 
+export function deriveSharedSecret(
+  privateKey: bigint,
+  publicKey: Point
+): Point {
+  return scalarMultiply(privateKey, publicKey);
+}
+
 function encryptECC(publicKey: Point, message: Point): [Point, Point] {
   const k = generatePrivateKey();
   const a = scalarMultiply(k, new Point(Gx, Gy));
