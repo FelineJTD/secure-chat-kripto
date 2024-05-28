@@ -197,8 +197,9 @@
         .then((text) => {
           console.log("Decrypted: ", text)
           const payload = JSON.parse(text)
+          if (payload.sender === id) return
           const decrypted = decryptMessage(privKeyECC as bigint, JSONToPoints(payload.message))
-          if (sign && payload.sign && payload.hash && remotePublicKey) {
+          if (payload.sign && payload.hash && remotePublicKey) {
             verifyMessage(decrypted, {sign: payload.sign, hash: payload.hash})
               .then((verified) => {
                 const message = {
@@ -368,6 +369,7 @@
             .then((text) => {
               console.log("Encrypted: ", text)
               socket.send(text)
+              messages = [{sender: id, message: message, verified: true}, ...messages]
             })
         })
     } else {
@@ -382,7 +384,9 @@
         .then((text) => {
           console.log("Encrypted: ", text)
           socket.send(text)
+          messages = [{sender: id, message: message, verified: false}, ...messages]
         })
+      
     }
   }
 </script>
