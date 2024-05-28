@@ -388,14 +388,14 @@
 </script>
 
 <main class="bg-neutral-100 h-screen">
-  <div class="flex flex-col lg:flex-row w-full h-screen">
+  <div class="flex flex-col md:flex-row w-full h-screen">
     <KeyInputs doSign={doSign} setSignKey={setSignKey} setVerifyKey={setVerifyKey} onGenerateSign={onGenerateSign} onGenerate={generate} setPrivKeyECC={setPrivKeyECC} setPubKeyECC={setPubKeyECC} status={status} />
     <Container>
       <ChatHeader sender={id} isConnected={isConnected} />
       <ChatContainer>
         <!-- loop with index -->
         {#each messages as message, i}
-          <ChatBubble isSelf={message.sender === id} message={message.message} />
+          <ChatBubble isSelf={message.sender === id} message={message.message} isVerified={message.verified} />
         {/each}
       </ChatContainer>
       <ChatInput onSend={onSend} />

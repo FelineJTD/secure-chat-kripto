@@ -9,7 +9,7 @@
   export let status
 </script>
 
-<div class="w-0 lg:w-1/3 pr-24 flex flex-col gap-2 py-4 pl-4">
+<div class="lg:w-1/3 pr-24 flex flex-col gap-2 py-4 pl-4">
   <h1 class="text-3xl font-semibold mb-4 text-neutral-600">Keys</h1>
   <label for="private-key" class="text-neutral-500">Enter your private key</label>
   <input id="private-key" type="file" on:change={(e) => setPrivKeyECC(e)} placeholder="Enter your private key" />
